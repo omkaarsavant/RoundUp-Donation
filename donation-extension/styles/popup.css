@@ -1,0 +1,279 @@
+/* Popup Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    width: 500px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+}
+
+#notification {
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    background: white;
+    min-height: 600px;
+}
+
+#notification.hidden {
+    display: none;
+}
+
+.hidden {
+    display: none;
+}
+
+#notification h2 {
+    color: #667eea;
+    margin-bottom: 8px;
+    font-size: 20px;
+}
+
+#notification p {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+/* Amount Display */
+.amount-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 24px 0;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.amount-box {
+    flex: 1;
+    min-width: 100px;
+    background: #f5f5f5;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+    border: 2px solid #e0e0e0;
+}
+
+.amount-box.highlight {
+    background: #e3f2fd;
+    border-color: #667eea;
+}
+
+.amount-box.donation {
+    background: #f3e5f5;
+    border-color: #764ba2;
+}
+
+.amount-box .label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.amount-box .amount {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+.amount-box.highlight .amount {
+    color: #667eea;
+}
+
+.amount-box.donation .amount {
+    color: #764ba2;
+}
+
+.arrow {
+    font-size: 20px;
+    color: #999;
+    margin: 0 4px;
+}
+
+/* NGO Info */
+.ngo-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0;
+    padding: 16px;
+    background: #fafafa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.ngo-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.ngo-details {
+    flex: 1;
+}
+
+.ngo-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.ngo-description {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Buttons */
+.buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+/* Default Content */
+.default-content {
+    padding: 24px;
+    background: white;
+    color: #333;
+}
+
+.default-content.hidden {
+    display: none;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    font-size: 24px;
+    color: #667eea;
+    margin-bottom: 4px;
+}
+
+.header p {
+    color: #666;
+    font-size: 14px;
+}
+
+.status {
+    background: #f5f5f5;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.status-item:last-child {
+    margin-bottom: 0;
+}
+
+.status-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.status-value {
+    color: #999;
+    font-weight: 600;
+}
+
+.settings-link {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.settings-link a {
+    display: inline-block;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: transform 0.2s;
+}
+
+.settings-link a:hover {
+    transform: translateY(-2px);
+}
+
+.info {
+    background: #f0f7ff;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+    margin: 20px 0;
+}
+
+.info h3 {
+    color: #667eea;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.info ol {
+    margin-left: 20px;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.6;
+}
+
+.footer {
+    text-align: center;
+    color: #999;
+    font-size: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e0e0e0;
+}

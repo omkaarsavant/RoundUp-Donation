@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round-Up Donations</title>
+    <link rel="stylesheet" href="styles/popup.css">
+</head>
+<body>
+    <div id="notification" class="notification hidden">
+        <h2 id="notificationTitle">Donation</h2>
+        <p id="notificationMessage"></p>
+        
+        <div class="amount-display">
+            <div class="amount-box">
+                <span class="label">Current Bill</span>
+                <span class="amount" id="currentAmount">₹0</span>
+            </div>
+            <div class="arrow">→</div>
+            <div class="amount-box highlight">
+                <span class="label">Rounded Amount</span>
+                <span class="amount" id="roundedAmount">₹0</span>
+            </div>
+            <div class="arrow">→</div>
+            <div class="amount-box donation">
+                <span class="label">Donation</span>
+                <span class="amount" id="donationAmount">₹0</span>
+            </div>
+        </div>
+
+        <div class="ngo-info">
+            <img id="ngoLogo" src="" alt="NGO Logo" class="ngo-logo">
+            <div class="ngo-details">
+                <p class="ngo-name" id="ngoName">Selected NGO</p>
+                <p class="ngo-description" id="ngoDescription">Helping communities</p>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button id="declineBtn" class="btn btn-secondary">Skip Donation</button>
+            <button id="acceptBtn" class="btn btn-primary">Donate & Pay</button>
+        </div>
+    </div>
+
+    <div id="defaultContent" class="default-content">
+        <div class="header">
+            <h1>🎁 Round-Up Donations</h1>
+            <p>Enable donations on checkout pages</p>
+        </div>
+
+        <div class="status">
+            <div class="status-item">
+                <span class="status-label">Status:</span>
+                <span class="status-value" id="extensionStatus">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Donation Page:</span>
+                <span class="status-value" id="pageStatus">Not on checkout</span>
+            </div>
+        </div>
+
+        <div class="settings-link">
+            <a id="settingsLink" href="settings.html" target="_blank">⚙️ Settings & NGO Selection</a>
+        </div>
+
+        <div class="info">
+            <h3>How it works:</h3>
+            <ol>
+                <li>Select your favorite NGO in settings</li>
+                <li>Go to checkout on Amazon, Flipkart, or Myntra</li>
+                <li>We'll offer to round-up your bill</li>
+                <li>Pay via UPI to donate directly</li>
+            </ol>
+        </div>
+
+        <div class="footer">
+            <p>Version 1.0.0</p>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round-Up Donations Settings</title>
+    <link rel="stylesheet" href="styles/settings.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎁 Round-Up Donations Settings</h1>
+            <p>Configure your donation preferences</p>
+        </header>
+
+        <main>
+            <!-- Extension Toggle -->
+            <section class="section">
+                <h2>Extension Status</h2>
+                <div class="toggle-group">
+                    <label class="toggle">
+                        <input type="checkbox" id="extensionEnabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label" id="statusLabel">Extension Enabled</span>
+                </div>
+            </section>
+
+            <!-- Rounding Rule -->
+            <section class="section">
+                <h2>Rounding Rule</h2>
+                <p class="description">How much to round up to</p>
+                <div class="radio-group">
+                    <label class="radio">
+                        <input type="radio" name="roundingRule" value="5" checked>
+                        <span class="radio-label">Round to nearest ₹5</span>
+                        <span class="example">e.g., ₹695 → ₹700 (donate ₹5)</span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="roundingRule" value="10">
+                        <span class="radio-label">Round to nearest ₹10</span>
+                        <span class="example">e.g., ₹695 → ₹700 (donate ₹5)</span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="roundingRule" value="100">
+                        <span class="radio-label">Round to nearest ₹100</span>
+                        <span class="example">e.g., ₹695 → ₹700 (donate ₹5)</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- NGO Selection -->
+            <section class="section">
+                <h2>Select NGO for Donations</h2>
+                <p class="description">Choose which NGO receives your donations</p>
+                
+                <div id="ngoList" class="ngo-list">
+                    <div class="loading">Loading NGOs...</div>
+                </div>
+            </section>
+
+            <!-- Transaction History -->
+            <section class="section">
+                <h2>Your Donation History</h2>
+                <div class="history-controls">
+                    <button id="viewHistory" class="btn btn-secondary">View Full History</button>
+                    <button id="exportHistory" class="btn btn-secondary">Export CSV</button>
+                    <button id="clearHistory" class="btn btn-danger">Clear History</button>
+                </div>
+                <div id="historyPreview" class="history-preview">
+                    <p>Loading your donation history...</p>
+                </div>
+            </section>
+
+            <!-- Save Button -->
+            <div class="actions">
+                <button id="saveBtn" class="btn btn-primary btn-large">Save Settings</button>
+                <span id="status" class="status-message"></span>
+            </div>
+        </main>
+
+        <!-- Modal for History -->
+        <div id="historyModal" class="modal hidden">
+            <div class="modal-content">
+                <button class="modal-close" id="closeModal">×</button>
+                <h2>Donation History</h2>
+                <div id="historyTable"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+</html>

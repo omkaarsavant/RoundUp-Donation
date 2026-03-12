@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Round-Up Donations",
+  "version": "1.0.0",
+  "description": "Automatically round up your purchases and donate to NGOs",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "https://www.amazon.in/*",
+    "https://www.flipkart.com/*",
+    "https://www.myntra.com/*",
+    "http://localhost:5000/*",
+    "https://api.donation-app.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Round-Up Donations"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.amazon.in/*"],
+      "js": ["content-scripts/amazon.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["https://www.flipkart.com/*"],
+      "js": ["content-scripts/flipkart.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["https://www.myntra.com/*"],
+      "js": ["content-scripts/myntra.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "options_page": "settings.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": ["https://www.amazon.in/*", "https://www.flipkart.com/*", "https://www.myntra.com/*"]
+    }
+  ]
+}

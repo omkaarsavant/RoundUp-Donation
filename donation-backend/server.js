@@ -19,7 +19,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security & Middleware
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP for easier development/testing
+    crossOriginEmbedderPolicy: false,
+    frameguard: false // Disable X-Frame-Options
+}));
 app.use(cors({
     origin: [
         'http://localhost:3000',
@@ -31,13 +35,29 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware
+// Request logging & Private Network Access support
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    
+    // Support Chrome's Private Network Access preflights
+    if (req.headers['access-control-request-private-network']) {
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    }
+    
+    // For non-options requests, still allow private network access
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
     next();
 });
 
-// Health check endpoint
+// Health check & Root
+app.get('/', (req, res) => {
+    res.send(`<h1>🎁 RoundUp Backend Online</h1><p>Health check at <a href="/health">/health</a></p>`);
+});
+
 app.get('/health', (req, res) => {
     res.json({ status: 'Server is running', timestamp: new Date() });
 });

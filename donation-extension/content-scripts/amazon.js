@@ -11,6 +11,22 @@ class AmazonCartDetector {
         console.log('Amazon: Initializing detector');
         this.observeDOM();
         
+        // Listen for requests from popup
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            if (request.action === 'getCartTotal') {
+                console.log('Amazon: Received getCartTotal request from popup');
+                const amount = this.detectCartTotal(true); // pass true to get data back
+                if (amount) {
+                    this.getDonationData(amount).then(data => {
+                        sendResponse({ success: true, data: data });
+                    });
+                    return true; // keep channel open for async response
+                } else {
+                    sendResponse({ success: false, error: 'Total not found' });
+                }
+            }
+        });
+
         // Also check on page load with multiple intervals
         this.detectCartTotal();
         setTimeout(() => this.detectCartTotal(), 500);
@@ -41,13 +57,14 @@ class AmazonCartDetector {
         });
     }
 
-    detectCartTotal() {
+    detectCartTotal(returnAmount = false) {
         try {
             // Amazon displays total in multiple places - we need to be specific
             
             // PRIORITY 1: Look for "Order Total:" specifically
             const orderTotalAmount = this.findOrderTotal();
             if (orderTotalAmount) {
+                if (returnAmount) return orderTotalAmount;
                 if (orderTotalAmount !== this.lastAmount && this.isValidAmount(orderTotalAmount)) {
                     console.log('Amazon: Order Total found:', orderTotalAmount);
                     this.lastAmount = orderTotalAmount;
@@ -60,6 +77,7 @@ class AmazonCartDetector {
             if (window.location.pathname.includes('checkout')) {
                 const paymentPageAmount = this.detectPaymentPageTotal();
                 if (paymentPageAmount) {
+                    if (returnAmount) return paymentPageAmount;
                     if (paymentPageAmount !== this.lastAmount && this.isValidAmount(paymentPageAmount)) {
                         console.log('Amazon: Payment page amount:', paymentPageAmount);
                         this.lastAmount = paymentPageAmount;
@@ -80,20 +98,34 @@ class AmazonCartDetector {
                 // Skip script/style elements
                 if (elem.tagName.match(/SCRIPT|STYLE|SMALL|SVG/i)) continue;
                 
+                // EXCLUSION: Skip if it mentions savings/discount nearby
+                if (this.isSavingsLabel(text) || this.isSavingsLabel(elem.parentElement?.textContent || '')) {
+                    continue;
+                }
+
                 const amount = this.extractAmount(text);
                 if (amount && this.isValidAmount(amount) && amount > largestPrice) {
                     largestPrice = amount;
                 }
             }
             
-            if (largestPrice > 0 && largestPrice !== this.lastAmount) {
-                console.log('Amazon: Found largest price:', largestPrice);
-                this.lastAmount = largestPrice;
-                this.notifyDonation(largestPrice);
+            if (largestPrice > 0) {
+                if (returnAmount) return largestPrice;
+                if (largestPrice !== this.lastAmount) {
+                    console.log('Amazon: Found largest price:', largestPrice);
+                    this.lastAmount = largestPrice;
+                    this.notifyDonation(largestPrice);
+                }
             }
+            return returnAmount ? null : undefined;
         } catch (error) {
             console.error('Error detecting Amazon cart total:', error);
         }
+    }
+
+    isSavingsLabel(text) {
+        const savingsKeywords = ['savings', 'saved', 'discount', 'off', 'you save', 'total savings', 'voucher', 'mrp'];
+        return savingsKeywords.some(keyword => text.toLowerCase().includes(keyword));
     }
 
     findOrderTotal() {
@@ -228,6 +260,9 @@ class AmazonCartDetector {
             for (let elem of allElements) {
                 const text = elem.textContent?.toLowerCase() || '';
                 if (text.includes(labelText.toLowerCase())) {
+                    // EXCLUSION: Skip if label itself is a savings label
+                    if (this.isSavingsLabel(text)) continue;
+
                     // Found label, search nearby elements for price
                     
                     // Search next siblings
@@ -235,6 +270,7 @@ class AmazonCartDetector {
                     for (let i = 0; i < 5; i++) {
                         current = current.nextElementSibling;
                         if (!current) break;
+                        if (this.isSavingsLabel(current.textContent)) continue;
                         const amount = this.extractAmount(current.textContent);
                         if (amount && this.isValidAmount(amount)) return amount;
                     }
@@ -245,6 +281,7 @@ class AmazonCartDetector {
                         for (let i = 0; i < 3; i++) {
                             parent = parent.nextElementSibling;
                             if (!parent) break;
+                            if (this.isSavingsLabel(parent.textContent)) continue;
                             const amount = this.extractAmount(parent.textContent);
                             if (amount && this.isValidAmount(amount)) return amount;
                         }
@@ -330,6 +367,12 @@ class AmazonCartDetector {
     }
 
     notifyDonation(amount) {
+        // RESTRICTION: Only notify on specific Amazon cart/checkout pages
+        if (!this.isOnCheckoutPage()) {
+            console.log('Amazon: Not on a designated checkout page, skipping notification');
+            return;
+        }
+
         console.log('Amazon: notifyDonation called with amount:', amount);
         // Get settings from background script
         chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
@@ -368,10 +411,44 @@ class AmazonCartDetector {
         });
     }
 
+    async getDonationData(amount) {
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
+                if (!response?.selectedNGO || response.extensionEnabled === false) {
+                    resolve(null);
+                    return;
+                }
+
+                const roundedAmount = this.calculateRoundUp(amount, response.roundingRule);
+                const donationAmount = roundedAmount - amount;
+
+                resolve({
+                    originalAmount: amount,
+                    roundedAmount: roundedAmount,
+                    donationAmount: donationAmount,
+                    website: 'amazon.in',
+                    ngoId: response.selectedNGO.id,
+                    ngoName: response.selectedNGO.name,
+                    ngoUPI: response.selectedNGO.upiId,
+                    ngoDescription: response.selectedNGO.description,
+                    ngoLogo: response.selectedNGO.logo
+                });
+            });
+        });
+    }
+
     calculateRoundUp(amount, rule) {
-        const ruleNum = parseInt(rule);
+        // Hardcoded to 5 as per user request
+        const ruleNum = 5;
         const remainder = amount % ruleNum;
         return remainder === 0 ? amount : amount + (ruleNum - remainder);
+    }
+
+    isOnCheckoutPage() {
+        const path = window.location.pathname.toLowerCase();
+        // Amazon cart is usually /gp/cart/view.html or /cart/smart-view
+        // Checkout is usually starts with /checkout/
+        return path.includes('/cart') || path.includes('/checkout/') || path.includes('/buy/');
     }
 }
 

@@ -9,43 +9,39 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎁 Round-Up Donations Settings</h1>
+            <h1>Round-Up Donations Settings</h1>
             <p>Configure your donation preferences</p>
         </header>
 
         <main>
-            <!-- Extension Toggle -->
-            <section class="section">
-                <h2>Extension Status</h2>
-                <div class="toggle-group">
-                    <label class="toggle">
-                        <input type="checkbox" id="extensionEnabled" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span class="toggle-label" id="statusLabel">Extension Enabled</span>
-                </div>
-            </section>
 
-            <!-- Rounding Rule -->
+            <!-- Donation Location -->
             <section class="section">
-                <h2>Rounding Rule</h2>
-                <p class="description">How much to round up to</p>
-                <div class="radio-group">
-                    <label class="radio">
-                        <input type="radio" name="roundingRule" value="5" checked>
-                        <span class="radio-label">Round to nearest ₹5</span>
-                        <span class="example">e.g., ₹695 → ₹700 (donate ₹5)</span>
-                    </label>
-                    <label class="radio">
-                        <input type="radio" name="roundingRule" value="10">
-                        <span class="radio-label">Round to nearest ₹10</span>
-                        <span class="example">e.g., ₹695 → ₹700 (donate ₹5)</span>
-                    </label>
-                    <label class="radio">
-                        <input type="radio" name="roundingRule" value="100">
-                        <span class="radio-label">Round to nearest ₹100</span>
-                        <span class="example">e.g., ₹695 → ₹700 (donate ₹5)</span>
-                    </label>
+                <h2>Donation Location</h2>
+                <p class="description">Select your city for local NGO focus</p>
+                <div class="location-selection">
+                    <div class="radio-group-horizontal">
+                        <label class="radio">
+                            <input type="radio" name="locationMode" value="auto" checked>
+                            <span class="radio-label">Auto Detect</span>
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="locationMode" value="select">
+                            <span class="radio-label">Select City</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="citySelectorGroup" class="city-selector-group hidden">
+                    <select id="citySelect" class="select-field">
+                        <option value="Nashik">Nashik</option>
+                        <option value="Pune">Pune</option>
+                        <option value="Mumbai">Mumbai</option>
+                    </select>
+                </div>
+                
+                <div id="detectedCityInfo" class="location-status">
+                    Detected City: <span id="detectedCityName">Searching...</span>
                 </div>
             </section>
 
@@ -87,8 +83,19 @@
                 <div id="historyTable"></div>
             </div>
         </div>
+
+        <!-- Modal for NGO Detail -->
+        <div id="ngoModal" class="modal hidden">
+            <div class="modal-content ngo-modal-content">
+                <button class="modal-close" id="closeNgoModal">×</button>
+                <div id="ngoModalDetail">
+                    <!-- Dynamic content will be injected here -->
+                </div>
+            </div>
+        </div>
     </div>
 
+    <script src="libs/jspdf.umd.min.js"></script>
     <script src="settings.js"></script>
 </body>
 </html>

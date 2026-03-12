@@ -7,20 +7,113 @@ document.addEventListener('DOMContentLoaded', async () => {
     const declineBtn = document.getElementById('declineBtn');
     const settingsLink = document.getElementById('settingsLink');
 
-    // Check if we're showing notification
-    chrome.storage.session.get(['donationData'], (result) => {
-        if (result.donationData) {
-            displayDonationNotification(result.donationData);
-            chrome.storage.session.remove(['donationData']);
+    // Check if payment was already completed for this tab
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (tabId) {
+            const successKey = `paymentCompleted_${tabId}`;
+            chrome.storage.session.get([successKey, 'donationData'], (result) => {
+                if (result[successKey]) {
+                    console.log('Popup: Payment already completed for this tab');
+                    showView('thankYouView');
+                } else if (result.donationData) {
+                    displayDonationNotification(result.donationData);
+                    chrome.storage.session.remove(['donationData']);
+                } else {
+                    // Existing checkout detection logic
+                    checkForCheckout(tabs[0]);
+                }
+            });
+        }
+    });
+
+    function checkForCheckout(tab) {
+        const url = tab?.url;
+        const isSupportedSite = url && ['amazon.in', 'flipkart.com', 'myntra.com'].some(site => url.includes(site));
+
+        console.log('Popup: Site:', url, 'isSupported:', isSupportedSite);
+
+        if (isSupportedSite) {
+            console.log('Popup: Supported site detected, requesting total from content script');
+            chrome.tabs.sendMessage(tab.id, { action: 'getCartTotal' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.warn('Popup: Message failed (script might not be loaded):', chrome.runtime.lastError.message);
+                    displayDefaultContent();
+                    return;
+                }
+
+                if (response && response.success && response.data) {
+                    console.log('Popup: Received on-demand total:', response.data);
+                    displayDonationNotification(response.data);
+                } else {
+                    console.log('Popup: On-demand total not found or success=false, showing default');
+                    displayDefaultContent();
+                }
+            });
         } else {
             displayDefaultContent();
         }
-    });
+    }
+
 
     // Settings link
     settingsLink.addEventListener('click', (e) => {
         e.preventDefault();
         chrome.runtime.openOptionsPage();
+    });
+
+    const paymentContainer = document.getElementById('paymentContainer');
+    const paymentIframe = document.getElementById('paymentIframe');
+    const paymentBackBtn = document.getElementById('paymentBackBtn');
+
+    // Handle messages from the payment iframe (e.g., closing the popup)
+    window.addEventListener('message', (event) => {
+        if (event.data === 'close-popup') {
+            window.close();
+        } else if (event.data === 'payment-success') {
+            console.log('Popup: Received payment-success message');
+            // Mark payment as completed for this tab
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                const tabId = tabs[0]?.id;
+                if (tabId) {
+                    const successKey = `paymentCompleted_${tabId}`;
+                    chrome.storage.session.set({ [successKey]: true }, () => {
+                        showView('thankYouView');
+                    });
+                }
+            });
+        }
+    });
+
+    const closeThankYouBtn = document.getElementById('closeThankYouBtn');
+    if (closeThankYouBtn) {
+        closeThankYouBtn.addEventListener('click', () => {
+            window.close();
+        });
+    }
+
+    function showView(viewId) {
+        const views = ['notification', 'defaultContent', 'paymentContainer', 'thankYouView'];
+        views.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (id === viewId) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                    // Reset iframe if hiding payment view
+                    if (id === 'paymentContainer') {
+                        const iframe = document.getElementById('paymentIframe');
+                        if (iframe) iframe.src = 'about:blank';
+                    }
+                }
+            }
+        });
+    }
+
+    // Back from payment
+    paymentBackBtn.addEventListener('click', () => {
+        showView('notification');
     });
 
     // Accept donation
@@ -33,8 +126,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            // Record donation in backend
-            const response = await fetch('http://localhost:5000/api/donations/record', {
+            console.log('Initiating Razorpay payment for:', donationData.ngoName);
+            
+            // Record donation and create Razorpay Payment Link
+            const response = await fetch('http://localhost:5000/api/donations/create-payment-link', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -44,33 +139,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                     roundedAmount: donationData.roundedAmount,
                     donationAmount: donationData.donationAmount,
                     ngoId: donationData.ngoId,
-                    website: donationData.website,
-                    timestamp: new Date().toISOString()
+                    ngoName: donationData.ngoName,
+                    website: donationData.website
                 })
             });
 
             const data = await response.json();
-            console.log('Donation recorded:', data);
+            
+            if (data.success && data.paymentLinkUrl) {
+                console.log('Razorpay Payment Link created success:', data.paymentLinkUrl);
+                
+                // Switch to payment view
+                showView('paymentContainer');
+                
+                // Clear any previous redirect messages and ensure iframe is visible
+                const iwrapper = paymentContainer.querySelector('.iframe-wrapper');
+                if (iwrapper) {
+                    iwrapper.innerHTML = '<iframe id="paymentIframe" src="about:blank" frameBorder="0" style="width: 100%; height: 100%; border: none;"></iframe>';
+                }
+                
+                // Load Razorpay in iframe
+                const finalIframe = document.getElementById('paymentIframe');
+                finalIframe.src = data.paymentLinkUrl;
 
-            // Generate UPI payment link
-            const upiLink = generateUPILink(
-                donationData.ngoUPI,
-                donationData.donationAmount,
-                donationData.ngoName,
-                data.transactionId
-            );
-
-            // Open UPI payment
-            window.location.href = upiLink;
-
-            // Close popup after opening payment
-            setTimeout(() => {
-                window.close();
-            }, 500);
+            } else {
+                console.error('Backend error:', data);
+                throw new Error(data.error || 'Failed to create payment link');
+            }
 
         } catch (error) {
-            console.error('Error recording donation:', error);
-            alert('Error processing donation. Please try again.');
+            console.error('Extension popup error:', error);
+            alert('Error processing donation: ' + error.message);
         }
     });
 
@@ -90,31 +189,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         localStorage.setItem('currentDonation', JSON.stringify(data));
 
-        notification.classList.remove('hidden');
-        defaultContent.classList.add('hidden');
+        showView('notification');
     }
 
     function displayDefaultContent() {
-        notification.classList.add('hidden');
-        defaultContent.classList.remove('hidden');
+        showView('defaultContent');
 
         // Update status
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs || !tabs[0] || !tabs[0].url) return;
             const currentUrl = tabs[0].url;
             const isCheckoutPage = isOnCheckoutPage(currentUrl);
             
-            document.getElementById('pageStatus').textContent = isCheckoutPage ? '✅ Checkout Detected' : '❌ Not on checkout';
-            document.getElementById('pageStatus').style.color = isCheckoutPage ? '#4CAF50' : '#999';
+            const pageStatusEl = document.getElementById('pageStatus');
+            if (pageStatusEl) {
+                pageStatusEl.textContent = isCheckoutPage ? 'Checkout Detected' : 'Not on checkout';
+                pageStatusEl.style.color = isCheckoutPage ? '#4CAF50' : '#999';
+            }
         });
 
         chrome.storage.sync.get(['extensionEnabled'], (result) => {
-            const status = result.extensionEnabled !== false ? 'Active' : 'Disabled';
-            document.getElementById('extensionStatus').textContent = status;
+            const extensionStatusEl = document.getElementById('extensionStatus');
+            if (extensionStatusEl) {
+                const status = result.extensionEnabled !== false ? 'Active' : 'Disabled';
+                extensionStatusEl.textContent = status;
+            }
         });
     }
 
     function isOnCheckoutPage(url) {
-        const checkoutKeywords = ['cart', 'checkout', 'payment', 'billing', 'placeorder', 'ordersummary'];
+        if (!url) return false;
+        const checkoutKeywords = [
+            'cart', 'checkout', 'payment', 'billing', 'placeorder', 'ordersummary',
+            '/gp/buy/', '/buy/pay', 'pay.flipkart.com', 'myntra.com/checkout'
+        ];
         return checkoutKeywords.some(keyword => url.toLowerCase().includes(keyword));
     }
 });

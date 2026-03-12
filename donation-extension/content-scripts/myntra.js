@@ -9,6 +9,23 @@ class MyntraCartDetector {
     init() {
         console.log('Myntra: Initializing detector');
         this.observeDOM();
+
+        // Listen for requests from popup
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            if (request.action === 'getCartTotal') {
+                console.log('Myntra: Received getCartTotal request from popup');
+                const amount = this.detectCartTotal(true);
+                if (amount) {
+                    this.getDonationData(amount).then(data => {
+                        sendResponse({ success: true, data: data });
+                    });
+                    return true;
+                } else {
+                    sendResponse({ success: false, error: 'Total not found' });
+                }
+            }
+        });
+
         // Run detection immediately and then every 2 seconds
         this.detectCartTotal();
         setTimeout(() => this.detectCartTotal(), 500);
@@ -32,46 +49,55 @@ class MyntraCartDetector {
         }
     }
 
-    detectCartTotal() {
+    detectCartTotal(returnAmount = false) {
         try {
             console.log('Myntra: Starting detection...');
             
-            // PRIORITY 1: Look for "Total Amount" label first
-            const totalAmountPrice = this.findTotalByLabel('Total Amount');
-            if (totalAmountPrice) {
-                console.log('Myntra: Found Total Amount:', totalAmountPrice);
-                if (totalAmountPrice !== this.lastAmount && this.isValidAmount(totalAmountPrice)) {
-                    this.lastAmount = totalAmountPrice;
-                    this.notifyDonation(totalAmountPrice);
+            // PRIORITY 1: Look for specific total labels first
+            const totalLabels = ['Total Amount', 'Total Payable', 'Payable Amount', 'Amount Payable', 'Order Total'];
+            for (let labelText of totalLabels) {
+                const amount = this.findTotalByLabel(labelText);
+                if (amount) {
+                    if (returnAmount) return amount;
+                    console.log(`Myntra: Found ${labelText}:`, amount);
+                    if (amount !== this.lastAmount && this.isValidAmount(amount)) {
+                        this.lastAmount = amount;
+                        this.notifyDonation(amount);
+                    }
+                    return;
                 }
-                return;
             }
             
             // PRIORITY 2: Scan for largest price on page (likely the total)
             let largestPrice = 0;
             let largestElem = null;
             let allElements = document.querySelectorAll('*');
-            console.log('Myntra: Scanning', allElements.length, 'elements');
             
             for (let elem of allElements) {
                 const text = elem.textContent?.trim() || '';
-                
-                // Only check leaf elements (no children)
                 if (elem.children.length > 0) continue;
-                
-                // Skip script/style/comment elements
                 if (elem.tagName.match(/SCRIPT|STYLE|SMALL|SVG|COMMENT/i)) continue;
                 
-                // Try to extract amount
                 const amount = this.extractAmount(text);
-                // Keep all amounts > 0, let isValidAmount handle filtering
                 if (amount && amount > 0 && this.isValidAmount(amount)) {
-                    // Check if near total-like labels
-                    const parentText = (elem.parentElement?.textContent || '').toLowerCase();
-                    const isNearLabel = /total|payable|amount|due|subtotal|final|checkout/i.test(parentText);
+                    // EXCLUSION: Skip if it mentions savings/discount/mrp in any ancestor (up to 4 levels)
+                    let current = elem;
+                    let shouldSkip = false;
+                    for (let i = 0; i < 4 && current; i++) {
+                        if (this.isSavingsLabel(current.textContent)) {
+                            shouldSkip = true;
+                            break;
+                        }
+                        current = current.parentElement;
+                    }
+
+                    if (shouldSkip) {
+                        console.log('Myntra: Skipping price near savings/mrp label:', text);
+                        continue;
+                    }
+
+                    console.log('Myntra: Considering potential price:', text, 'Amount:', amount);
                     
-                    console.log('Myntra: Found amount:', amount, 'Near label:', isNearLabel);
-                    // Prefer amounts near labels, but still track largest
                     if (amount > largestPrice) {
                         largestPrice = amount;
                         largestElem = elem;
@@ -80,19 +106,26 @@ class MyntraCartDetector {
             }
             
             if (largestPrice > 0) {
-                console.log('Myntra: Largest price found:', largestPrice);
+                if (returnAmount) return largestPrice;
+                console.log('Myntra: Selected largest price:', largestPrice);
                 if (largestPrice !== this.lastAmount) {
                     this.lastAmount = largestPrice;
                     this.notifyDonation(largestPrice);
-                } else {
-                    console.log('Myntra: Amount already notified');
                 }
-            } else {
-                console.log('Myntra: No valid amount found');
             }
+            return returnAmount ? null : undefined;
         } catch (error) {
             console.error('Error detecting Myntra cart total:', error);
         }
+    }
+
+    isSavingsLabel(text) {
+        if (!text) return false;
+        const savingsKeywords = [
+            'savings', 'saved', 'discount', 'off', 'you save', 'total savings', 
+            'mrp', 'total mrp', 'coupon', 'applied', 'bag discount', 'platform fee'
+        ];
+        return savingsKeywords.some(keyword => text.toLowerCase().includes(keyword));
     }
 
     findTotalByLabel(labelText) {
@@ -113,21 +146,36 @@ class MyntraCartDetector {
             
             console.log('Myntra: Found', labelElements.length, 'label candidates');
             
-            // For each label element, look for price in next siblings
+            // For each label element, look for price in the element itself, siblings or parent-siblings
             for (let labelElem of labelElements) {
-                // Check next 5 siblings for a price
+                // EXCLUSION: If the label itself or its surroundings mention "saved/savings/discount/mrp"
+                // but ONLY if the label isn't our target "Total Amount" label.
+                // We check if the element contains EXCLUSION keywords but NOT our target label effectively.
+                const elemText = labelElem.textContent || '';
+                if (this.isSavingsLabel(elemText) && !elemText.toLowerCase().includes('total amount') && !elemText.toLowerCase().includes('total payable')) {
+                    console.log('Myntra: Skipping candidate due to exclusion keywords:', elemText);
+                    continue;
+                }
+
+                // Check the element itself (e.g., "Total Amount ₹1,062")
+                const selfAmount = this.extractAmount(elemText);
+                if (selfAmount && selfAmount > 0 && this.isValidAmount(selfAmount)) {
+                    console.log('Myntra: Found price in label element itself:', selfAmount);
+                    return selfAmount;
+                }
+
+                // Check next 3 siblings for a price
                 let current = labelElem.nextElementSibling;
-                for (let i = 0; i < 5 && current; i++) {
-                    const siblingText = (current.textContent || '').trim();
-                    const match = siblingText.match(/₹\s*([0-9,]+(?:\.\d{1,2})?)/);
-                    if (match) {
-                        const amount = parseInt(match[1].replace(/,/g, ''));
-                        if (this.isValidAmount(amount)) {
-                            console.log('Myntra: Found price after label:', amount);
-                            return amount;
-                        }
-                    }
+                for (let i = 0; i < 3 && current; i++) {
+                    const amount = this.searchInContainer(current);
+                    if (amount) return amount;
                     current = current.nextElementSibling;
+                }
+
+                // Check siblings of the parent
+                if (labelElem.parentElement && labelElem.parentElement.nextElementSibling) {
+                    const amount = this.searchInContainer(labelElem.parentElement.nextElementSibling);
+                    if (amount) return amount;
                 }
             }
             
@@ -139,12 +187,35 @@ class MyntraCartDetector {
         }
     }
 
+    searchInContainer(container) {
+        if (!container) return null;
+        const priceElems = container.querySelectorAll('span, div');
+        for (let el of priceElems) {
+            if (el.children.length > 0) continue;
+            const text = (el.textContent || '').trim();
+            if (text.length > 30 || this.isSavingsLabel(text)) continue;
+            const match = text.match(/₹\s*([0-9,]+(?:\.\d{1,2})?)/);
+            if (match) {
+                const amount = parseInt(match[1].replace(/,/g, ''));
+                if (this.isValidAmount(amount)) {
+                    console.log('Myntra: Extracted amount from container:', text, 'Amount:', amount);
+                    return amount;
+                }
+            }
+        }
+        return null;
+    }
+
     extractAmount(text) {
         try {
-            let cleaned = text.replace(/₹|,/g, '').trim();
-            const match = cleaned.match(/\d+(\.\d{1,2})?/);
+            if (!text) return null;
+            // Look for number with optional commas and decimal
+            // Example: ₹1,062.00 or 1062
+            const match = text.match(/₹?\s*([0-9,]+(?:\.\d{1,2})?)/);
             if (match) {
-                return parseInt(match[0]);
+                let amountStr = match[1].replace(/,/g, '');
+                const amount = parseInt(amountStr);
+                return isNaN(amount) ? null : amount;
             }
         } catch (error) {
             console.error('Error extracting amount:', error);
@@ -195,6 +266,12 @@ class MyntraCartDetector {
     }
 
     notifyDonation(amount) {
+        // RESTRICTION: Only notify on specific Myntra checkout/cart pages
+        if (!this.isOnCheckoutPage()) {
+            console.log('Myntra: Not on a designated checkout page, skipping notification');
+            return;
+        }
+
         console.log('Myntra: notifyDonation called with amount:', amount);
         chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
             console.log('Myntra: Got settings:', response);
@@ -235,12 +312,46 @@ class MyntraCartDetector {
         });
     }
 
+    async getDonationData(amount) {
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
+                if (!response?.selectedNGO || response.extensionEnabled === false) {
+                    resolve(null);
+                    return;
+                }
+
+                const roundedAmount = this.calculateRoundUp(amount, response.roundingRule);
+                const donationAmount = roundedAmount - amount;
+
+                resolve({
+                    originalAmount: amount,
+                    roundedAmount: roundedAmount,
+                    donationAmount: donationAmount,
+                    website: 'myntra.com',
+                    ngoId: response.selectedNGO.id,
+                    ngoName: response.selectedNGO.name,
+                    ngoUPI: response.selectedNGO.upiId,
+                    ngoDescription: response.selectedNGO.description,
+                    ngoLogo: response.selectedNGO.logo
+                });
+            });
+        });
+    }
+
     calculateRoundUp(amount, rule) {
-        // Default to 5 if rule is missing or invalid
-        const ruleNum = parseInt(rule) || 5;
-        if (ruleNum <= 0) return amount;
+        // Hardcoded to 5 as per user request
+        const ruleNum = 5;
         const remainder = amount % ruleNum;
         return remainder === 0 ? amount : amount + (ruleNum - remainder);
+    }
+
+    isOnCheckoutPage() {
+        // Myntra cart/checkout URL usually contains /checkout/cart
+        const path = window.location.pathname.toLowerCase();
+        const url = window.location.href.toLowerCase();
+        
+        // Target: https://www.myntra.com/checkout/cart
+        return path === '/checkout/cart' || path.includes('/checkout/payment');
     }
 }
 

@@ -242,6 +242,46 @@ input:checked + .toggle-slider:before {
     margin-bottom: 2px;
 }
 
+/* Location Styles */
+.hidden {
+    display: none !important;
+}
+
+.radio-group-horizontal {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.city-selector-group {
+    margin-bottom: 15px;
+}
+
+.select-field {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    background-color: white;
+}
+
+.location-status {
+    font-size: 14px;
+    color: #666;
+    margin-top: 5px;
+}
+
+#detectedCityName {
+    font-weight: bold;
+    color: #2196F3;
+}
+
+.description {
+    color: #666;
+    margin-bottom: 10px;
+}
+
 .ngo-upi {
     font-family: monospace;
     color: #999;
@@ -471,4 +511,121 @@ input:checked + .toggle-slider:before {
     .actions {
         flex-direction: column;
     }
+}
+/* NGO Modal Content */
+.ngo-modal-content {
+    max-width: 500px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ngo-detail-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.ngo-detail-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 4px solid white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    object-fit: cover;
+}
+
+.ngo-detail-header h2 {
+    margin-bottom: 5px;
+    color: white;
+}
+
+.ngo-detail-body {
+    padding: 24px;
+}
+
+.ngo-detail-section {
+    margin-bottom: 20px;
+}
+
+.ngo-detail-section h4 {
+    font-size: 14px;
+    color: #666;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.ngo-detail-section p {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #333;
+}
+
+.ngo-contact-info {
+    display: grid;
+    gap: 12px;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.contact-icon {
+    font-size: 18px;
+}
+
+.ngo-select-action {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+.ngo-card.selected {
+    border-color: #4CAF50;
+    background: #f0f9f0;
+    position: relative;
+}
+
+.ngo-card.selected::after {
+    content: 'Selected';
+    position: absolute;
+    top: -10px;
+    right: 10px;
+    background: #4CAF50;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.ngo-card-badge {
+    display: none;
+}
+
+.btn-icon {
+    background: #f0f7ff;
+    color: #007bff;
+    border: 1px solid #cce5ff;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
 }

@@ -8,9 +8,15 @@ const { NGO } = require('../models');
 // Get all NGOs
 router.get('/', async (req, res) => {
     try {
-        const ngos = await NGO.find().select('-__v');
-
-        // If no NGOs in database, return sample data
+        const { location } = req.query;
+        let query = {};
+        if (location) {
+            query.location = { $regex: new RegExp(location, 'i') };
+        }
+        
+        const ngos = await NGO.find(query).select('-__v');
+        
+        // If no NGOs in database (or matching query), return sample data
         if (ngos.length === 0) {
             const sampleNGOs = [
                 {
@@ -20,7 +26,8 @@ router.get('/', async (req, res) => {
                     upiId: 'teachindia@upi',
                     logo: 'https://via.placeholder.com/100?text=Teach+India',
                     category: 'education',
-                    website: 'https://teachindia.org'
+                    website: 'https://teachindia.org',
+                    location: 'Mumbai'
                 },
                 {
                     id: 'ngo-002',
@@ -29,25 +36,8 @@ router.get('/', async (req, res) => {
                     upiId: 'dwb.india@upi',
                     logo: 'https://via.placeholder.com/100?text=DWB',
                     category: 'health',
-                    website: 'https://msf.org'
-                },
-                {
-                    id: 'ngo-003',
-                    name: 'Clean Environment India',
-                    description: 'Working towards a cleaner, greener India',
-                    upiId: 'cleanenv@upi',
-                    logo: 'https://via.placeholder.com/100?text=Clean+Env',
-                    category: 'environment',
-                    website: 'https://cleanindia.org'
-                },
-                {
-                    id: 'ngo-004',
-                    name: 'Hope for Children',
-                    description: 'Supporting underprivileged children\'s welfare',
-                    upiId: 'hopechildren@upi',
-                    logo: 'https://via.placeholder.com/100?text=Hope',
-                    category: 'poverty',
-                    website: 'https://hopechildren.org'
+                    website: 'https://msf.org',
+                    location: 'Mumbai'
                 },
                 {
                     id: 'ngo-005',
@@ -56,9 +46,16 @@ router.get('/', async (req, res) => {
                     upiId: 'drn.india@upi',
                     logo: 'https://via.placeholder.com/100?text=DRN',
                     category: 'disaster',
-                    website: 'https://disasterrelief.org'
+                    website: 'https://disasterrelief.org',
+                    location: 'Nashik'
                 }
             ];
+            
+            // Filter sample data if location provided
+            if (location) {
+                const filtered = sampleNGOs.filter(n => n.location.toLowerCase() === location.toLowerCase());
+                return res.json(filtered);
+            }
 
             return res.json(sampleNGOs);
         }
@@ -88,7 +85,7 @@ router.get('/:id', async (req, res) => {
 // Create NGO (Admin only in production)
 router.post('/', async (req, res) => {
     try {
-        const { name, description, upiId, logo, category, website } = req.body;
+        const { name, description, upiId, logo, category, website, phone, location } = req.body;
 
         // Validation
         if (!name || !upiId || !description) {
@@ -102,7 +99,8 @@ router.post('/', async (req, res) => {
             upiId,
             logo: logo || 'https://via.placeholder.com/100',
             category: category || 'other',
-            website: website || ''
+            website: website || '',
+            location: location || 'Nashik'
         });
 
         await ngo.save();

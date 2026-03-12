@@ -31,6 +31,12 @@ const ngoSchema = new mongoose.Schema({
         default: 'other'
     },
     website: String,
+    phone: String,
+    location: {
+        type: String,
+        required: true,
+        default: 'Nashik'
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -93,6 +99,10 @@ const donationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    ngoName: {
+        type: String,
+        required: true
+    },
     originalAmount: {
         type: Number,
         required: true
@@ -107,7 +117,6 @@ const donationSchema = new mongoose.Schema({
     },
     website: {
         type: String,
-        enum: ['amazon.in', 'flipkart.com', 'myntra.com'],
         required: true
     },
     status: {
@@ -134,7 +143,6 @@ const transactionLogSchema = new mongoose.Schema({
     donationAmount: Number,
     action: {
         type: String,
-        enum: ['initiated', 'completed', 'failed', 'refunded'],
         required: true
     },
     details: mongoose.Schema.Types.Mixed,

@@ -50,6 +50,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Inject content scripts when DOM is ready
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete') {
+        // Reset payment success flag for this tab when refreshed
+        const successKey = `paymentCompleted_${tabId}`;
+        chrome.storage.session.remove([successKey]);
+
         // Check if on ecommerce site
         const checkoutSites = ['amazon.in', 'flipkart.com', 'myntra.com'];
         if (tab?.url && checkoutSites.some(site => tab.url.includes(site))) {

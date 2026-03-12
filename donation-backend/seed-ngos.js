@@ -27,7 +27,9 @@ const seedNGOs = async () => {
                 upiId: 'teachindia@upi',
                 logo: 'https://via.placeholder.com/100?text=Teach+India',
                 category: 'education',
-                website: 'https://teachindia.org'
+                website: 'https://teachindia.org',
+                phone: '+91 98765 43210',
+                location: 'Mumbai'
             },
             {
                 id: 'ngo-002',
@@ -36,7 +38,9 @@ const seedNGOs = async () => {
                 upiId: 'dwbindia@upi',
                 logo: 'https://via.placeholder.com/100?text=DWB',
                 category: 'health',
-                website: 'https://msf.org'
+                website: 'https://msf.org',
+                phone: '+91 98765 43211',
+                location: 'Mumbai'
             },
             {
                 id: 'ngo-003',
@@ -45,7 +49,9 @@ const seedNGOs = async () => {
                 upiId: 'cleanenv@upi',
                 logo: 'https://via.placeholder.com/100?text=Clean+Env',
                 category: 'environment',
-                website: 'https://cleanindia.org'
+                website: 'https://cleanindia.org',
+                phone: '+91 98765 43212',
+                location: 'Pune'
             },
             {
                 id: 'ngo-004',
@@ -54,7 +60,9 @@ const seedNGOs = async () => {
                 upiId: 'hopechild@upi',
                 logo: 'https://via.placeholder.com/100?text=Hope',
                 category: 'poverty',
-                website: 'https://hopechild.org'
+                website: 'https://hopechild.org',
+                phone: '+91 98765 43213',
+                location: 'Pune'
             },
             {
                 id: 'ngo-005',
@@ -63,7 +71,9 @@ const seedNGOs = async () => {
                 upiId: 'drn.india@upi',
                 logo: 'https://via.placeholder.com/100?text=DRN',
                 category: 'disaster',
-                website: 'https://disasterrelief.org'
+                website: 'https://disasterrelief.org',
+                phone: '+91 98765 43214',
+                location: 'Nashik'
             },
             {
                 id: 'ngo-006',
@@ -72,7 +82,9 @@ const seedNGOs = async () => {
                 upiId: 'womenpower@upi',
                 logo: 'https://via.placeholder.com/100?text=Women+Power',
                 category: 'other',
-                website: 'https://womenempowerment.org'
+                website: 'https://womenempowerment.org',
+                phone: '+91 98765 43215',
+                location: 'Nashik'
             },
             {
                 id: 'ngo-007',
@@ -81,7 +93,9 @@ const seedNGOs = async () => {
                 upiId: 'animalcare@upi',
                 logo: 'https://via.placeholder.com/100?text=Animal+Care',
                 category: 'other',
-                website: 'https://animalwelfare.org'
+                website: 'https://animalwelfare.org',
+                phone: '+91 98765 43216',
+                location: 'Mumbai'
             },
             {
                 id: 'ngo-008',
@@ -90,7 +104,9 @@ const seedNGOs = async () => {
                 upiId: 'ruraldev@upi',
                 logo: 'https://via.placeholder.com/100?text=Rural+Dev',
                 category: 'other',
-                website: 'https://ruraldev.org'
+                website: 'https://ruraldev.org',
+                phone: '+91 98765 43217',
+                location: 'Pune'
             }
         ];
 

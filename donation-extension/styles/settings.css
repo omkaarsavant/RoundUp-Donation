@@ -189,9 +189,10 @@
 .ngo-card {
     position: relative;
     display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1.5rem 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
     border: none;
     border-top: 1px solid rgba(26,26,26,0.08);
     border-radius: 0;
@@ -201,8 +202,16 @@
 }
 
 .ngo-card:hover {
-    border-top-color: var(--lux-fg);
-    background: transparent;
+    background: rgba(46, 125, 50, 0.02);
+    border-top-color: var(--lux-success);
+}
+
+.ngo-card-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    flex: 1;
 }
 
 .ngo-card input[type="radio"] {
@@ -276,7 +285,7 @@
 
 /* Selected NGO */
 .ngo-card.selected {
-    border-top: 2px solid var(--lux-accent);
+    border: 2px solid var(--lux-success);
     background: transparent;
 }
 
@@ -284,13 +293,13 @@
     content: 'SELECTED';
     position: absolute;
     top: 0.5rem;
-    right: 0;
+    right: 1.5rem;
     font-family: var(--lux-font-body);
     font-size: 9px;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.2em;
-    color: var(--lux-accent);
+    color: var(--lux-success);
     background: transparent;
     padding: 0;
     border-radius: 0;
@@ -346,29 +355,32 @@
 
 .lux-btn-ghost:hover { color: var(--lux-fg); }
 
-/* Legacy .btn & .btn-icon — keep for JS-generated markup */
-.btn-icon {
+/* Legacy .btn & .btn-icon & .lux-btn-icon — keep for JS-generated markup */
+.btn-icon, .lux-btn-icon {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     height: 2rem;
-    padding: 0 0.75rem;
+    min-width: 5rem;
+    padding: 0 1rem;
     font-family: var(--lux-font-body);
     font-size: 10px;
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--lux-fg);
-    background: transparent;
-    border: 1px solid rgba(26,26,26,0.15);
+    letter-spacing: 0.1em;
+    color: var(--lux-bg);
+    background: var(--lux-fg);
+    border: none;
     border-radius: 0;
     cursor: pointer;
     transition: all var(--lux-duration-normal) var(--lux-easing-luxury);
+    box-shadow: var(--lux-shadow-sm);
 }
 
-.btn-icon:hover {
-    background: var(--lux-fg);
+.btn-icon:hover, .lux-btn-icon:hover {
+    background: var(--lux-accent);
     color: var(--lux-bg);
-    border-color: var(--lux-fg);
+    border: none;
 }
 
 /* ---- Button Group ---- */
@@ -468,6 +480,14 @@
 .badge.completed { background: var(--lux-fg); color: var(--lux-bg); }
 .badge.failed { background: transparent; color: var(--lux-muted-fg); border: 1px solid rgba(26,26,26,0.15); }
 
+.status-text {
+    font-family: var(--lux-font-body);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--lux-fg);
+}
+
 /* ---- Actions ---- */
 .lux-actions {
     display: flex;
@@ -546,8 +566,21 @@
 .ngo-detail-header {
     background: var(--lux-fg);
     color: var(--lux-bg);
-    padding: 2rem 1.5rem;
-    text-align: center;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.ngo-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.ngo-header-titles {
+    text-align: left;
 }
 
 .ngo-detail-logo {
@@ -562,7 +595,7 @@
     border: 2px solid rgba(249,248,246,0.3);
     object-fit: cover;
     overflow: hidden;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0;
     filter: grayscale(100%);
     transition: filter var(--lux-duration-cinematic) var(--lux-easing-luxury);
 }
@@ -573,7 +606,41 @@
     font-family: var(--lux-font-heading);
     font-weight: 400;
     color: var(--lux-bg);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
+    font-size: 1.25rem;
+}
+
+.ngo-detail-header p {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin: 0;
+    color: var(--lux-bg);
+}
+
+/* Ensure buttons in dark header are always visible */
+.ngo-header-right .lux-btn-primary {
+    background: var(--lux-accent);
+    color: var(--lux-accent-fg);
+    border: none;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.ngo-header-right .lux-btn-primary:hover {
+    background: var(--lux-bg);
+    color: var(--lux-fg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.ngo-header-right .lux-btn-secondary {
+    background: transparent;
+    border: 1px solid rgba(249, 248, 246, 0.4);
+    color: var(--lux-bg);
+}
+
+.ngo-header-right .lux-btn-secondary:hover {
+    background: var(--lux-bg);
+    color: var(--lux-fg);
+    border-color: var(--lux-bg);
 }
 
 .ngo-detail-body { padding: 2rem; }
@@ -619,12 +686,7 @@
     min-width: 1.5rem;
 }
 
-.ngo-select-action {
-    display: flex;
-    justify-content: center;
-    padding: 1.5rem 2rem;
-    border-top: 1px solid rgba(26,26,26,0.08);
-}
+/* NGO selection button is now in the header */
 
 /* ---- Error state ---- */
 .error {

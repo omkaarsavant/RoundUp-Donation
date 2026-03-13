@@ -377,10 +377,7 @@ class AmazonCartDetector {
         // Get settings from background script
         chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
             console.log('Amazon: Got settings:', response);
-            if (!response?.selectedNGO) {
-                console.log('Amazon: No NGO selected, skipping');
-                return;
-            }
+            
             if (response.extensionEnabled === false) {
                 console.log('Amazon: Extension disabled');
                 return;
@@ -391,7 +388,7 @@ class AmazonCartDetector {
             console.log('Amazon: Rounding rule:', response.roundingRule, 'Amount:', amount, 'Rounded:', roundedAmount, 'Donation:', donationAmount);
 
             if (donationAmount >= 0) {
-                // Trigger popup with donation data
+                // Trigger popup with donation data (NGO might be null)
                 console.log('Amazon: Sending showDonationNotification message');
                 chrome.runtime.sendMessage({
                     action: 'showDonationNotification',
@@ -400,11 +397,11 @@ class AmazonCartDetector {
                         roundedAmount: roundedAmount,
                         donationAmount: donationAmount,
                         website: 'amazon.in',
-                        ngoId: response.selectedNGO.id,
-                        ngoName: response.selectedNGO.name,
-                        ngoUPI: response.selectedNGO.upiId,
-                        ngoDescription: response.selectedNGO.description,
-                        ngoLogo: response.selectedNGO.logo
+                        ngoId: response.selectedNGO?.id || null,
+                        ngoName: response.selectedNGO?.name || null,
+                        ngoUPI: response.selectedNGO?.upiId || null,
+                        ngoDescription: response.selectedNGO?.description || null,
+                        ngoLogo: response.selectedNGO?.logo || null
                     }
                 });
             }
@@ -414,7 +411,7 @@ class AmazonCartDetector {
     async getDonationData(amount) {
         return new Promise((resolve) => {
             chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
-                if (!response?.selectedNGO || response.extensionEnabled === false) {
+                if (response.extensionEnabled === false) {
                     resolve(null);
                     return;
                 }
@@ -427,11 +424,11 @@ class AmazonCartDetector {
                     roundedAmount: roundedAmount,
                     donationAmount: donationAmount,
                     website: 'amazon.in',
-                    ngoId: response.selectedNGO.id,
-                    ngoName: response.selectedNGO.name,
-                    ngoUPI: response.selectedNGO.upiId,
-                    ngoDescription: response.selectedNGO.description,
-                    ngoLogo: response.selectedNGO.logo
+                    ngoId: response.selectedNGO?.id || null,
+                    ngoName: response.selectedNGO?.name || null,
+                    ngoUPI: response.selectedNGO?.upiId || null,
+                    ngoDescription: response.selectedNGO?.description || null,
+                    ngoLogo: response.selectedNGO?.logo || null
                 });
             });
         });

@@ -313,11 +313,6 @@ class FlipkartCartDetector {
                 return;
             }
             
-            if (!response.selectedNGO) {
-                console.log('Flipkart: No NGO selected in settings, NOT showing popup');
-                return;
-            }
-            
             if (response.extensionEnabled === false) {
                 console.log('Flipkart: Extension is disabled in settings');
                 return;
@@ -336,11 +331,11 @@ class FlipkartCartDetector {
                         roundedAmount: roundedAmount,
                         donationAmount: donationAmount,
                         website: 'flipkart.com',
-                        ngoId: response.selectedNGO.id,
-                        ngoName: response.selectedNGO.name,
-                        ngoUPI: response.selectedNGO.upiId,
-                        ngoDescription: response.selectedNGO.description,
-                        ngoLogo: response.selectedNGO.logo
+                        ngoId: response.selectedNGO?.id || null,
+                        ngoName: response.selectedNGO?.name || null,
+                        ngoUPI: response.selectedNGO?.upiId || null,
+                        ngoDescription: response.selectedNGO?.description || null,
+                        ngoLogo: response.selectedNGO?.logo || null
                     }
                 }, (msgResponse) => {
                     console.log('Flipkart: showDonationNotification response from background:', msgResponse);
@@ -357,7 +352,7 @@ class FlipkartCartDetector {
     async getDonationData(amount) {
         return new Promise((resolve) => {
             chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
-                if (!response?.selectedNGO || response.extensionEnabled === false) {
+                if (response.extensionEnabled === false) {
                     resolve(null);
                     return;
                 }
@@ -370,11 +365,11 @@ class FlipkartCartDetector {
                     roundedAmount: roundedAmount,
                     donationAmount: donationAmount,
                     website: 'flipkart.com',
-                    ngoId: response.selectedNGO.id,
-                    ngoName: response.selectedNGO.name,
-                    ngoUPI: response.selectedNGO.upiId,
-                    ngoDescription: response.selectedNGO.description,
-                    ngoLogo: response.selectedNGO.logo
+                    ngoId: response.selectedNGO?.id || null,
+                    ngoName: response.selectedNGO?.name || null,
+                    ngoUPI: response.selectedNGO?.upiId || null,
+                    ngoDescription: response.selectedNGO?.description || null,
+                    ngoLogo: response.selectedNGO?.logo || null
                 });
             });
         });

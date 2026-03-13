@@ -1,6 +1,27 @@
 // Settings Page Script
 
+const API_BASE_URL = 'http://localhost:5000/api';
+let currentSession = null;
+
+// Helper to get absolute logo URL
+function getLogoUrl(path) {
+    if (!path) return 'icons/default-ngo.png';
+    if (path.startsWith('http')) return path;
+    // Remove /api from the end of the base URL to get the root
+    const root = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0, -4) : API_BASE_URL;
+    const url = `${root}/${path}`;
+    console.log(`[DEBUG] Final Logo URL for ${path}: ${url}`);
+    return url;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+
+    // Auth elements
+    const authNotice = document.getElementById('authNotice');
+    const appSettings = document.getElementById('appSettings');
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+
+    // Form elements
     const locationModes = document.querySelectorAll('input[name="locationMode"]');
     const citySelectorGroup = document.getElementById('citySelectorGroup');
     const citySelect = document.getElementById('citySelect');
@@ -22,26 +43,82 @@ document.addEventListener('DOMContentLoaded', async () => {
     historyPreview.addEventListener('click', handleReceiptClick);
     historyTable.addEventListener('click', handleReceiptClick);
 
-    // Load saved settings
-    chrome.storage.sync.get(['extensionEnabled', 'locationMode', 'selectedCity', 'selectedNGO'], async (result) => {
+    // Initial load Flow
+    await checkAuthStatus();
 
-        const locationMode = result.locationMode || 'auto';
-        document.querySelector(`input[name="locationMode"][value="${locationMode}"]`).checked = true;
-        
-        if (locationMode === 'select') {
-            citySelectorGroup.classList.remove('hidden');
-            if (result.selectedCity) {
-                citySelect.value = result.selectedCity;
+    // -- AUTH FLOW -- //
+    function checkAuthStatus() {
+        chrome.runtime.sendMessage({ action: 'getSession' }, async (response) => {
+            if (response && response.session) {
+                currentSession = response.session;
+                userEmailDisplay.textContent = `Signed in as: ${currentSession.user.email}`;
+                authNotice.classList.add('hidden');
+                appSettings.classList.remove('hidden');
+                initializeApp();
+            } else {
+                authNotice.classList.remove('hidden');
+                appSettings.classList.add('hidden');
             }
+        });
+    }
+
+    window.getAuthToken = async function () {
+        return new Promise(resolve => {
+            chrome.runtime.sendMessage({ action: 'getAuthToken' }, obj => resolve(obj?.token));
+        });
+    };
+
+    // -- APP FLOW -- //
+    async function initializeApp() {
+
+        // Try to fetch profile from backend to sync settings
+        try {
+            const profileRes = await fetch(`${API_BASE_URL}/users/profile`, {
+                headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+            });
+            if (profileRes.ok) {
+                const profile = await profileRes.json();
+                if (profile.selectedNGO) {
+                    // Sync backend NGO selection to local storage if it exists
+                    // We need to fetch the full NGO object from the list to store it correctly
+                    const ngosRes = await fetch(`${API_BASE_URL}/ngos`, {
+                        headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+                    });
+                    const ngos = await ngosRes.json();
+                    const matchedNgo = ngos.find(n => n.id === profile.selectedNGO);
+                    if (matchedNgo) {
+                        await new Promise(r => chrome.storage.sync.set({ selectedNGO: matchedNgo }, r));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to sync backend profile:', e);
         }
 
-        // Initialize based on mode
-        if (locationMode === 'auto') {
-            await autoDetectLocation();
-        } else {
-            await loadNGOs(citySelect.value);
-        }
-    });
+        // Load saved settings from sync storage (now synchronized with backend)
+        chrome.storage.sync.get(['extensionEnabled', 'locationMode', 'selectedCity', 'selectedNGO'], async (result) => {
+
+            const locationMode = result.locationMode || 'auto';
+            document.querySelector(`input[name="locationMode"][value="${locationMode}"]`).checked = true;
+
+            if (locationMode === 'select') {
+                citySelectorGroup.classList.remove('hidden');
+                if (result.selectedCity) {
+                    citySelect.value = result.selectedCity;
+                }
+            }
+
+            // Initialize based on mode
+            if (locationMode === 'auto') {
+                await autoDetectLocation();
+            } else {
+                await loadNGOs(citySelect.value);
+            }
+        });
+
+        // Load donation history
+        await loadDonationHistory();
+    }
 
     // Handle Location Mode changes
     locationModes.forEach(mode => {
@@ -64,7 +141,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function autoDetectLocation() {
         detectedCityName.textContent = 'Detecting...';
         // Mock auto-detection (in reality would use a geo-IP service or Geolocation API)
-        // For this demo, let's say it's Nashik
         setTimeout(async () => {
             const city = 'Nashik';
             detectedCityName.textContent = city;
@@ -73,40 +149,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    // Load NGOs
-    await loadNGOs();
-
-    // Load donation history
-    await loadDonationHistory();
-
     // NGO Modal elements
     const ngoModal = document.getElementById('ngoModal');
     const ngoModalDetail = document.getElementById('ngoModalDetail');
-    const closeNgoModalBtn = document.getElementById('closeNgoModal');
 
-    closeNgoModalBtn.addEventListener('click', () => ngoModal.classList.add('hidden'));
-    
     // Close modal on outside click
     window.addEventListener('click', (e) => {
         if (e.target === ngoModal) ngoModal.classList.add('hidden');
         if (e.target === document.getElementById('historyModal')) closeHistoryModal();
     });
 
-    // Save settings (now primarily for Enabled status and Location mode, as NGO is saved on selection)
+    // Save settings
     saveBtn.addEventListener('click', async () => {
-        chrome.storage.sync.get(['selectedNGO'], (result) => {
-            if (!result.selectedNGO) {
-                status.textContent = 'Please select an NGO from the list below';
-                status.style.color = '#D4AF37';
-                return;
-            }
+        const result = await chrome.storage.sync.get(['selectedNGO']);
+        const selectedNGO = result.selectedNGO;
 
-            const locationMode = document.querySelector('input[name="locationMode"]:checked').value;
-            const selectedCity = citySelect.value;
+        if (!selectedNGO) {
+            status.textContent = 'Please select an NGO from the list below';
+            status.style.color = '#D4AF37';
+            return;
+        }
 
+        const locationMode = document.querySelector('input[name="locationMode"]:checked').value;
+        const selectedCity = citySelect.value;
+
+        try {
+            // Save to backend profile
+            const response = await fetch(`${API_BASE_URL}/users/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await window.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    selectedNGO: selectedNGO.id
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to update backend profile');
+
+            // Save to chrome storage
             chrome.storage.sync.set({
                 locationMode: locationMode,
-                selectedCity: selectedCity
+                selectedCity: selectedCity,
+                // selectedNGO object is already in sync storage from selectNGO()
             }, () => {
                 status.textContent = 'Settings saved successfully';
                 status.style.color = '#1A1A1A';
@@ -114,7 +200,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     status.textContent = '';
                 }, 3000);
             });
-        });
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            status.textContent = 'Failed to save settings to server';
+            status.style.color = '#D32F2F';
+        }
     });
 
     // History modal controls
@@ -126,28 +216,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadNGOs(location = '') {
     const ngoList = document.getElementById('ngoList');
+    if (!ngoList) return;
     ngoList.innerHTML = '<div class="loading">Loading NGOs for ' + (location || 'all areas') + '...</div>';
 
     try {
-        const url = location ? `http://localhost:5000/api/ngos?location=${encodeURIComponent(location)}` : 'http://localhost:5000/api/ngos';
-        const response = await fetch(url);
+        const url = location ? `${API_BASE_URL}/ngos?location=${encodeURIComponent(location)}` : `${API_BASE_URL}/ngos`;
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+        });
         const ngos = await response.json();
 
         chrome.storage.sync.get(['selectedNGO'], (result) => {
             const currentSelectedId = result.selectedNGO?.id;
-            
-            ngoList.innerHTML = ngos.map(ngo => `
+
+            ngoList.innerHTML = ngos.map(ngo => {
+                const logoUrl = getLogoUrl(ngo.logo);
+                return `
                 <div class="ngo-card ${currentSelectedId === ngo.id ? 'selected' : ''}" data-ngo='${escapeHtml(JSON.stringify(ngo))}'>
                     <div class="ngo-card-content">
-                        <img src="${escapeHtml(ngo.logo)}" alt="${escapeHtml(ngo.name)}" class="ngo-card-logo">
+                        <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(ngo.name)}" class="ngo-card-logo">
                         <div class="ngo-info">
-                            <h3>${escapeHtml(ngo.name)}</h3>
+                            <div style="display: flex; align-items: baseline; gap: 0.5rem; justify-content: space-between;">
+                                <h3>${escapeHtml(ngo.name)}</h3>
+                                <span class="lux-label" style="font-size: 8px; opacity: 0.6; letter-spacing: 0.1em;">INFO</span>
+                            </div>
                             <p>${escapeHtml(ngo.description)}</p>
                         </div>
                     </div>
-                    <span class="ngo-card-badge">View Details</span>
                 </div>
-            `).join('');
+            `}).join('');
 
             // Add click listeners to cards
             document.querySelectorAll('.ngo-card').forEach(card => {
@@ -160,70 +257,110 @@ async function loadNGOs(location = '') {
 
     } catch (error) {
         console.error('Error loading NGOs:', error);
-        ngoList.innerHTML = '<p class="error">Failed to load NGOs. Make sure backend is running on http://localhost:5000</p>';
+        ngoList.innerHTML = `<p class="error">Failed to load NGOs. Make sure backend is running on ${API_BASE_URL}</p>`;
     }
 }
 
 function openNgoDetail(ngo) {
     const ngoModal = document.getElementById('ngoModal');
     const ngoModalDetail = document.getElementById('ngoModalDetail');
-    
-    ngoModalDetail.innerHTML = `
-        <div class="ngo-detail-header">
-            <img src="${escapeHtml(ngo.logo)}" alt="${escapeHtml(ngo.name)}" class="ngo-detail-logo">
-            <h2>${escapeHtml(ngo.name)}</h2>
-            <p>${escapeHtml(ngo.category)}</p>
-        </div>
-        <div class="ngo-detail-body">
-            <div class="ngo-detail-section">
-                <h4>About</h4>
-                <p>${escapeHtml(ngo.description)}</p>
+
+    chrome.storage.sync.get(['selectedNGO'], (result) => {
+        const isSelected = result.selectedNGO?.id === ngo.id;
+        const logoUrl = getLogoUrl(ngo.logo);
+        
+        ngoModalDetail.innerHTML = `
+            <div class="ngo-detail-header">
+                <div class="ngo-header-left">
+                    <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(ngo.name)}" class="ngo-detail-logo">
+                    <div class="ngo-header-titles">
+                        <h2>${escapeHtml(ngo.name)}</h2>
+                        <p>${escapeHtml(ngo.category)}</p>
+                    </div>
+                </div>
+                <div class="ngo-header-right">
+                    ${isSelected ?
+                `<button id="deselectNgoBtn" class="lux-btn lux-btn-secondary">Deselect NGO</button>` :
+                `<button id="selectNgoBtn" class="lux-btn lux-btn-primary">Select NGO</button>`
+            }
+                </div>
             </div>
-            <div class="ngo-detail-section">
-                <h4>Contact & Payment Details</h4>
-                <div class="ngo-contact-info">
-                    <div class="contact-item">
-                        <span class="contact-icon">Website:</span>
-                        <a href="${escapeHtml(ngo.website)}" target="_blank">${escapeHtml(ngo.website || 'No website provided')}</a>
-                    </div>
-                    <div class="contact-item">
-                        <span class="contact-icon">Phone:</span>
-                        <span>${escapeHtml(ngo.phone || 'No phone number provided')}</span>
-                    </div>
-                    <div class="contact-item">
-                        <span class="contact-icon">UPI:</span>
-                        <span><strong>${escapeHtml(ngo.upiId)}</strong></span>
+            <div class="ngo-detail-body">
+                <div class="ngo-detail-section">
+                    <h4>About</h4>
+                    <p>${escapeHtml(ngo.description)}</p>
+                </div>
+                <div class="ngo-detail-section">
+                    <h4>Contact & Payment Details</h4>
+                    <div class="ngo-contact-info">
+                        <div class="contact-item">
+                            <span class="contact-icon">Website:</span>
+                            <a href="${escapeHtml(ngo.website)}" target="_blank">${escapeHtml(ngo.website || 'No website provided')}</a>
+                        </div>
+                        <div class="contact-item">
+                            <span class="contact-icon">Phone:</span>
+                            <span>${escapeHtml(ngo.phone || 'No phone number provided')}</span>
+                        </div>
+                        <div class="contact-item">
+                            <span class="contact-icon">UPI:</span>
+                            <span><strong>${escapeHtml(ngo.upiId)}</strong></span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="ngo-select-action">
-            <button id="selectNgoBtn" class="lux-btn lux-btn-primary" style="width: 100%; height: 3rem;">Select This NGO</button>
-        </div>
-    `;
+        `;
 
-    document.getElementById('selectNgoBtn').addEventListener('click', () => {
-        selectNGO(ngo);
+        if (isSelected) {
+            document.getElementById('deselectNgoBtn').addEventListener('click', () => {
+                deselectNGO();
+            });
+        } else {
+            document.getElementById('selectNgoBtn').addEventListener('click', () => {
+                selectNGO(ngo);
+            });
+        }
+
+        ngoModal.classList.remove('hidden');
     });
+}
 
-    ngoModal.classList.remove('hidden');
+function deselectNGO() {
+    chrome.storage.sync.remove(['selectedNGO'], () => {
+        const ngoModal = document.getElementById('ngoModal');
+        ngoModal.classList.add('hidden');
+
+        // Refresh the list to show unselected state
+        refreshNGOList();
+
+        // Show feedback
+        const status = document.getElementById('status');
+        status.textContent = `NGO deselected`;
+        status.style.color = '#6C6863';
+        setTimeout(() => {
+            status.textContent = '';
+        }, 3000);
+    });
+}
+
+function refreshNGOList() {
+    const locationMode = document.querySelector('input[name="locationMode"]:checked').value;
+    const currentCity = document.getElementById('citySelect').value;
+
+    if (locationMode === 'auto') {
+        const detectedCity = document.getElementById('detectedCityName').textContent;
+        loadNGOs(detectedCity === 'Searching...' || detectedCity === 'Detecting...' ? '' : detectedCity);
+    } else {
+        loadNGOs(currentCity);
+    }
 }
 
 function selectNGO(ngo) {
     chrome.storage.sync.set({ selectedNGO: ngo }, () => {
         const ngoModal = document.getElementById('ngoModal');
         ngoModal.classList.add('hidden');
-        
+
         // Refresh the list to show selected state
-        const locationMode = document.querySelector('input[name="locationMode"]:checked').value;
-        const currentCity = document.getElementById('citySelect').value;
-        
-        if (locationMode === 'auto') {
-            const detectedCity = document.getElementById('detectedCityName').textContent;
-            loadNGOs(detectedCity === 'Searching...' ? '' : detectedCity);
-        } else {
-            loadNGOs(currentCity);
-        }
+        refreshNGOList();
 
         // Show feedback
         const status = document.getElementById('status');
@@ -237,9 +374,12 @@ function selectNGO(ngo) {
 
 async function loadDonationHistory() {
     const historyPreview = document.getElementById('historyPreview');
+    if (!historyPreview) return;
 
     try {
-        const response = await fetch('http://localhost:5000/api/donations/recent?limit=5');
+        const response = await fetch(`${API_BASE_URL}/donations/history`, {
+            headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+        });
         const donations = await response.json();
 
         if (donations.length === 0) {
@@ -247,7 +387,9 @@ async function loadDonationHistory() {
             return;
         }
 
-        const totalDonated = donations.reduce((sum, d) => sum + d.donationAmount, 0);
+        // Limit preview to 5
+        const recentDonations = donations.slice(0, 5);
+        const totalDonated = donations.filter(d => d.status === 'completed' || d.status === 'paid').reduce((sum, d) => sum + d.donationAmount, 0);
 
         historyPreview.innerHTML = `
             <div class="history-summary">
@@ -271,21 +413,26 @@ async function loadDonationHistory() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${donations.slice(0, 5).map(d => {
-                        const date = new Date(d.timestamp);
-                        const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-                        return `
+                    ${recentDonations.map(d => {
+            const date = d.timestamp ? new Date(d.timestamp) : new Date();
+            const formattedDate = isNaN(date.getTime()) ? '-' : `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+            return `
                             <tr>
                                 <td>${formattedDate}</td>
                                 <td>${escapeHtml(d.ngoName || d.ngoId)}</td>
                                 <td>₹${d.donationAmount}</td>
-                                <td><span class="badge ${d.status}">${d.status}</span></td>
                                 <td>
-                                    ${(d.status === 'completed' || d.status === 'paid') ? `<button class="btn-icon download-receipt-btn" data-txn-id="${d.transactionId}" title="Download Receipt">Receipt</button>` : '-'}
+                                    ${d.status === 'completed' ?
+                    `<span class="status-text">${d.status}</span>` :
+                    `<span class="badge ${d.status}">${d.status}</span>`
+                }
+                                </td>
+                                <td>
+                                    ${(d.status === 'completed' || d.status === 'paid') ? `<button class="lux-btn-icon download-receipt-btn" data-txn-id="${d.transactionId}" title="Download Receipt">Receipt</button>` : '-'}
                                 </td>
                             </tr>
                         `;
-                    }).join('')}
+        }).join('')}
                 </tbody>
             </table>
         `;
@@ -300,7 +447,9 @@ async function openHistoryModal() {
     const modal = document.getElementById('historyModal');
 
     try {
-        const response = await fetch('http://localhost:5000/api/donations/history');
+        const response = await fetch(`${API_BASE_URL}/donations/history`, {
+            headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+        });
         const donations = await response.json();
 
         const table = document.getElementById('historyTable');
@@ -322,22 +471,27 @@ async function openHistoryModal() {
                     </thead>
                     <tbody>
                         ${donations.map(d => {
-                            const date = new Date(d.timestamp);
-                            const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-                            return `
+                const date = d.timestamp ? new Date(d.timestamp) : new Date();
+                const formattedDate = isNaN(date.getTime()) ? '-' : `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+                return `
                                 <tr>
                                     <td>${formattedDate}</td>
                                     <td>₹${d.originalAmount}</td>
                                     <td>₹${d.donationAmount}</td>
                                     <td>${escapeHtml(d.ngoName || d.ngoId)}</td>
                                     <td>${escapeHtml(d.website)}</td>
-                                    <td><span class="badge ${d.status}">${d.status}</span></td>
                                     <td>
-                                        ${(d.status === 'completed' || d.status === 'paid') ? `<button class="btn-icon download-receipt-btn" data-txn-id="${d.transactionId}" title="Download Receipt">Receipt</button>` : '-'}
+                                        ${d.status === 'completed' ?
+                        `<span class="status-text">${d.status}</span>` :
+                        `<span class="badge ${d.status}">${d.status}</span>`
+                    }
+                                    </td>
+                                    <td>
+                                        ${(d.status === 'completed' || d.status === 'paid') ? `<button class="lux-btn-icon download-receipt-btn" data-txn-id="${d.transactionId}" title="Download Receipt">Receipt</button>` : '-'}
                                     </td>
                                 </tr>
                             `;
-                        }).join('')}
+            }).join('')}
                     </tbody>
                 </table>
             `;
@@ -357,7 +511,9 @@ function closeHistoryModal() {
 
 async function exportHistoryCSV() {
     try {
-        const response = await fetch('http://localhost:5000/api/donations/history');
+        const response = await fetch(`${API_BASE_URL}/donations/history`, {
+            headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+        });
         const donations = await response.json();
 
         const csv = [
@@ -369,7 +525,7 @@ async function exportHistoryCSV() {
                 d.ngoId,
                 d.website,
                 d.status
-            ].map(field => `"${field}"`).join(','))
+            ].map(field => `"${field ?? ''}"`).join(','))
         ].join('\n');
 
         const blob = new Blob([csv], { type: 'text/csv' });
@@ -392,15 +548,17 @@ async function clearHistory() {
     }
 
     try {
-        const response = await fetch('http://localhost:5000/api/donations/clear', {
-            method: 'POST'
+        const response = await fetch(`${API_BASE_URL}/donations/clear`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
         });
 
         if (response.ok) {
             alert('History cleared');
             location.reload();
         } else {
-            alert('Failed to clear history');
+            const errData = await response.json().catch(() => ({}));
+            alert(`Failed to clear history: ${errData.error || 'Unknown error'} ${errData.details ? '(' + errData.details + ')' : ''}`);
         }
     } catch (error) {
         console.error('Error clearing history:', error);
@@ -410,17 +568,19 @@ async function clearHistory() {
 
 async function downloadReceipt(transactionId) {
     try {
-        const response = await fetch(`http://localhost:5000/api/donations/history`);
+        const response = await fetch(`${API_BASE_URL}/donations/history`, {
+            headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+        });
         const donations = await response.json();
         const donation = donations.find(d => d.transactionId === transactionId);
-        
+
         if (!donation) {
             alert('Receipt data not found');
             return;
         }
 
         const date = new Date(donation.timestamp);
-        const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+        const formattedDate = isNaN(date.getTime()) ? 'N/A' : `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 
         // Initialize jsPDF with better fallback for UMD
         let JSPDF = null;
@@ -539,6 +699,7 @@ async function downloadReceipt(transactionId) {
 window.downloadReceipt = downloadReceipt;
 
 function escapeHtml(text) {
+    if (!text) return '';
     const map = {
         '&': '&amp;',
         '<': '&lt;',

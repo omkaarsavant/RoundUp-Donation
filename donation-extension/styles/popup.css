@@ -190,6 +190,19 @@ body {
     color: var(--lux-bg);
 }
 
+.btn-disabled {
+    background: rgba(26,26,26,0.05) !important;
+    border: 1px solid rgba(26,26,26,0.1) !important;
+    color: var(--lux-muted-fg) !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+.btn-disabled:hover {
+    background: rgba(26,26,26,0.05) !important;
+    color: var(--lux-muted-fg) !important;
+}
+
 /* ============================================================
    DEFAULT CONTENT VIEW
    ============================================================ */
@@ -256,14 +269,16 @@ body {
     margin: 1.5rem 0;
 }
 
-.settings-link a {
+.settings-link a, #signOutBtn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     height: 2.75rem;
     padding: 0 1.75rem;
     background: var(--lux-fg);
     color: var(--lux-bg);
     text-decoration: none;
+    border: none;
     border-radius: 0;
     font-family: var(--lux-font-body);
     font-size: 10px;
@@ -272,9 +287,11 @@ body {
     letter-spacing: var(--lux-tracking-btn);
     transition: all var(--lux-duration-normal) var(--lux-easing-luxury);
     box-shadow: var(--lux-shadow-btn);
+    cursor: pointer;
+    width: 100%;
 }
 
-.settings-link a:hover {
+.settings-link a:hover, #signOutBtn:hover {
     box-shadow: var(--lux-shadow-btn-hover);
     background: var(--lux-accent);
 }
@@ -318,6 +335,61 @@ body {
     margin-top: 2rem;
     padding-top: 1.25rem;
     border-top: 1px solid rgba(26,26,26,0.08);
+}
+
+/* ---- Forms & Auth ---- */
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: var(--lux-muted-fg);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(26,26,26,0.1);
+}
+
+.divider:not(:empty)::before {
+    margin-right: .5em;
+}
+
+.divider:not(:empty)::after {
+    margin-left: .5em;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: 1px solid rgba(26,26,26,0.2);
+    border-radius: 0;
+    font-family: var(--lux-font-body);
+    font-size: 0.875rem;
+    color: var(--lux-fg);
+    transition: border-color var(--lux-duration-normal) var(--lux-easing-luxury);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--lux-fg);
+}
+
+.auth-form-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
 }
 
 /* ============================================================

@@ -1,139 +1,96 @@
-// Seed Initial NGO Data into Database
-// Run once: node seed-ngos.js
+const admin = require('firebase-admin');
+const path = require('path');
 
-const mongoose = require('mongoose');
-require('dotenv').config();
-const { NGO } = require('./models');
+// Initialize Firebase Admin
+const serviceAccount = require('./serviceAccountKey.json');
 
-const seedNGOs = async () => {
-    try {
-        // Connect to MongoDB
-        await mongoose.connect(
-            process.env.MONGODB_URI || 'mongodb://localhost:27017/donation-db',
-            {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-            }
-        );
+if (!admin.apps.length) {
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+}
 
-        console.log('✓ Connected to MongoDB\n');
+const db = admin.firestore();
 
-        // Sample NGOs
-        const ngos = [
-            {
-                id: 'ngo-001',
-                name: 'Teach India Foundation',
-                description: 'Providing quality education to underprivileged children across India',
-                upiId: 'teachindia@upi',
-                logo: 'https://via.placeholder.com/100?text=Teach+India',
-                category: 'education',
-                website: 'https://teachindia.org',
-                phone: '+91 98765 43210',
-                location: 'Mumbai'
-            },
-            {
-                id: 'ngo-002',
-                name: 'Doctors Without Borders India',
-                description: 'Medical aid and emergency healthcare to communities in need',
-                upiId: 'dwbindia@upi',
-                logo: 'https://via.placeholder.com/100?text=DWB',
-                category: 'health',
-                website: 'https://msf.org',
-                phone: '+91 98765 43211',
-                location: 'Mumbai'
-            },
-            {
-                id: 'ngo-003',
-                name: 'Clean Environment Initiative',
-                description: 'Working towards a cleaner, greener India through environmental conservation',
-                upiId: 'cleanenv@upi',
-                logo: 'https://via.placeholder.com/100?text=Clean+Env',
-                category: 'environment',
-                website: 'https://cleanindia.org',
-                phone: '+91 98765 43212',
-                location: 'Pune'
-            },
-            {
-                id: 'ngo-004',
-                name: 'Hope for Every Child',
-                description: 'Supporting underprivileged children\'s education, health, and welfare',
-                upiId: 'hopechild@upi',
-                logo: 'https://via.placeholder.com/100?text=Hope',
-                category: 'poverty',
-                website: 'https://hopechild.org',
-                phone: '+91 98765 43213',
-                location: 'Pune'
-            },
-            {
-                id: 'ngo-005',
-                name: 'Disaster Relief Network',
-                description: 'Emergency aid and rehabilitation for disaster-affected communities',
-                upiId: 'drn.india@upi',
-                logo: 'https://via.placeholder.com/100?text=DRN',
-                category: 'disaster',
-                website: 'https://disasterrelief.org',
-                phone: '+91 98765 43214',
-                location: 'Nashik'
-            },
-            {
-                id: 'ngo-006',
-                name: 'Women Empowerment Foundation',
-                description: 'Empowering women through skill training and financial independence',
-                upiId: 'womenpower@upi',
-                logo: 'https://via.placeholder.com/100?text=Women+Power',
-                category: 'other',
-                website: 'https://womenempowerment.org',
-                phone: '+91 98765 43215',
-                location: 'Nashik'
-            },
-            {
-                id: 'ngo-007',
-                name: 'Animal Welfare Society',
-                description: 'Protecting and caring for animals, rescue and rehabilitation programs',
-                upiId: 'animalcare@upi',
-                logo: 'https://via.placeholder.com/100?text=Animal+Care',
-                category: 'other',
-                website: 'https://animalwelfare.org',
-                phone: '+91 98765 43216',
-                location: 'Mumbai'
-            },
-            {
-                id: 'ngo-008',
-                name: 'Rural Development Program',
-                description: 'Sustainable development and infrastructure improvement in rural areas',
-                upiId: 'ruraldev@upi',
-                logo: 'https://via.placeholder.com/100?text=Rural+Dev',
-                category: 'other',
-                website: 'https://ruraldev.org',
-                phone: '+91 98765 43217',
-                location: 'Pune'
-            }
-        ];
-
-        // Clear existing NGOs
-        await NGO.deleteMany({});
-        console.log('✓ Cleared existing NGOs\n');
-
-        // Insert new NGOs
-        const result = await NGO.insertMany(ngos);
-        console.log(`✓ Successfully inserted ${result.length} NGOs:\n`);
-
-        result.forEach(ngo => {
-            console.log(`  • ${ngo.name} (${ngo.id})`);
-            console.log(`    UPI: ${ngo.upiId}`);
-            console.log(`    Category: ${ngo.category}\n`);
-        });
-
-        console.log('✅ Seeding completed successfully!\n');
-        process.exit(0);
-
-    } catch (error) {
-        console.error('❌ Error seeding database:', error.message);
-        console.error('\nMake sure MongoDB is running:');
-        console.error('  1. Check MongoDB service is running');
-        console.error('  2. Or set MONGODB_URI for MongoDB Atlas');
-        process.exit(1);
+// Note: Using relative paths for logos. The frontend should handle prepending the API_BASE_URL if needed,
+// but for easiest compatibility with current frontend img src usage, we'll use a placeholder or relative slash.
+const ngos = [
+    {
+        name: "Samagra Foundation",
+        description: "A non-profit organization working on education, health, environment, and community empowerment for marginalized communities. It runs initiatives like informal learning centers, youth empowerment programs, and rural education projects.",
+        logo: "samagra.jpg",
+        category: "Education & Health",
+        upiId: "samagra@upi",
+        website: "https://samagrafoundation.com/",
+        location: "Nashik",
+        phone: "7588539018"
+    },
+    {
+        name: "Nashik Ploggers",
+        description: "A volunteer group focused on environmental cleanliness and plastic waste reduction. They organize plogging drives (jogging while collecting waste) and public awareness campaigns about sustainability in Nashik.",
+        logo: "np.jpg",
+        category: "Environment",
+        upiId: "nashikploggers@upi",
+        website: "https://www.ploggersfoundation.org/",
+        location: "Nashik",
+        phone: "9067355268"
+    },
+    {
+        name: "Akshar Paaul",
+        description: "A social trust dedicated to providing education to children of migrant construction workers and helping them enter mainstream schooling through literacy programs and learning centers.",
+        logo: "akshar.jpg",
+        category: "Education",
+        upiId: "aksharpaaul@upi",
+        website: "https://www.aksharpaaul.org/",
+        location: "Pune",
+        phone: "8856935553"
+    },
+    {
+        name: "Janaseva Foundation",
+        description: "A well-known nonprofit working in healthcare, education, elderly care, and social welfare. It runs hospitals, rehabilitation services, and community development programs for vulnerable groups.",
+        logo: "janaseva.jpg",
+        category: "Healthcare & Welfare",
+        upiId: "janaseva@upi",
+        website: "https://janasevafoundation.org/",
+        location: "Pune",
+        phone: "+91 20 24538787"
+    },
+    {
+        name: "Abhilasha Foundation",
+        description: "A social organization working for women empowerment, child welfare, and community development through awareness programs, education initiatives, and support for disadvantaged groups.",
+        logo: "abhilasja.jpg",
+        category: "Women & Child Welfare",
+        upiId: "abhilasha@upi",
+        website: "https://www.abhilasha-foundation.org/",
+        location: "Mumbai",
+        phone: "+91 98702 34440"
     }
-};
+];
 
-seedNGOs();
+async function seedNGOs() {
+    console.log('Clearing existing NGOs from Firestore...');
+    const snapshot = await db.collection('ngos').get();
+    const deleteBatch = db.batch();
+    snapshot.forEach(doc => {
+        deleteBatch.delete(doc.ref);
+    });
+    await deleteBatch.commit();
+    console.log('Cleared existing NGOs.');
+
+    console.log('Seeding new NGOs into Firestore...');
+    const batch = db.batch();
+    
+    for (const ngo of ngos) {
+        const docRef = db.collection('ngos').doc();
+        batch.set(docRef, {
+            ...ngo,
+            id: docRef.id,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    await batch.commit();
+    console.log('Successfully seeded 5 new NGOs with local assets.');
+}
+
+seedNGOs().catch(console.error);

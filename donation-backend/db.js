@@ -1,26 +1,58 @@
-// MongoDB Connection
+// Firebase Admin Initialization
+const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 
-const mongoose = require('mongoose');
+let db = null;
 
 const connectDB = async () => {
     try {
-        const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/donation-db';
+        // Option 1: Provide path to service account key file
+        const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
         
-        await mongoose.connect(mongoUri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        // Option 2: Provide config via ENV vars
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-        console.log('✓ MongoDB connected successfully');
+        if (fs.existsSync(serviceAccountPath)) {
+            const serviceAccount = require(serviceAccountPath);
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            console.log('✓ Firebase Admin initialized with serviceAccountKey.json');
+        } else if (projectId && clientEmail && privateKey) {
+            admin.initializeApp({
+                credential: admin.credential.cert({
+                    projectId,
+                    clientEmail,
+                    privateKey
+                })
+            });
+            console.log('✓ Firebase Admin initialized with environment variables');
+        } else {
+            console.error('✗ Firebase credentials missing. Please provide serviceAccountKey.json or set ENV variables.');
+            return false;
+        }
+
+        db = admin.firestore();
         return true;
     } catch (error) {
-        console.error('✗ MongoDB connection failed:', error.message);
-        console.log('\nTo run MongoDB locally:');
-        console.log('  1. Install MongoDB: https://www.mongodb.com/try/download/community');
-        console.log('  2. Start mongod service');
-        console.log('  3. Or use MongoDB Atlas: https://www.mongodb.com/cloud/atlas');
+        if (error.code === 'app/duplicate-app') {
+            db = admin.firestore();
+            console.log('✓ Firebase Admin already initialized');
+            return true;
+        }
+        console.error('✗ Firebase connection failed:', error.message);
         return false;
     }
 };
 
-module.exports = connectDB;
+const getDB = () => {
+    if (!db) {
+        throw new Error('Firebase Firestore not initialized');
+    }
+    return db;
+};
+
+module.exports = { connectDB, getDB, admin };

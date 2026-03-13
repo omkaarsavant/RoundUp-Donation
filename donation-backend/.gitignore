@@ -25,3 +25,4 @@ dist-ssr
 
 .config/
 !.env
+donation-backend/serviceAccountKey.json

@@ -4,7 +4,8 @@ const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const Razorpay = require('razorpay');
-const { Donation, TransactionLog } = require('../models');
+const { getDB } = require('../db');
+const { requireAuth } = require('../middleware/auth');
 
 // Initialize Razorpay
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -13,16 +14,30 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.log('✅ Razorpay initialized with Key ID:', process.env.RAZORPAY_KEY_ID.substring(0, 8) + '...');
 }
 
-// Debug Log: Check TransactionLog actions
-console.log('📊 Allowed TransactionLog actions:', TransactionLog.schema.path('action').enumValues);
-
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-// Record a new donation
-router.post('/record', async (req, res) => {
+// Helper to map DB to frontend camelCase
+const mapDonationToFrontend = (d) => {
+    if (!d) return d;
+    return {
+        ...d,
+        transactionId: d.transaction_id || d.transactionId,
+        userId: d.user_id || d.userId,
+        ngoId: d.ngo_id || d.ngoId,
+        ngoName: d.ngo_name || d.ngoName,
+        originalAmount: parseFloat(d.original_amount || d.originalAmount || 0),
+        roundedAmount: parseFloat(d.rounded_amount || d.roundedAmount || 0),
+        donationAmount: parseFloat(d.donation_amount || d.donationAmount || 0),
+        upiTransactionId: d.upi_transaction_id || d.upiTransactionId,
+        timestamp: d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate().toISOString() : d.timestamp
+    };
+};
+
+// Record a new donation (protected)
+router.post('/record', requireAuth, async (req, res) => {
     try {
         const {
             originalAmount,
@@ -34,49 +49,48 @@ router.post('/record', async (req, res) => {
             timestamp
         } = req.body;
 
-        // Validation
-        if (!originalAmount || !roundedAmount || !donationAmount || !ngoId || !ngoName || !website) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-
+        const db = getDB();
         const transactionId = `txn-${uuidv4()}`;
+        const userId = req.user.uid;
 
-        // Create donation record
-        const donation = new Donation({
-            transactionId,
-            ngoId,
-            ngoName,
-            originalAmount,
-            roundedAmount,
-            donationAmount,
+        const newDonation = {
+            transaction_id: transactionId,
+            user_id: userId,
+            ngo_id: ngoId,
+            ngo_name: ngoName,
+            original_amount: originalAmount,
+            rounded_amount: roundedAmount,
+            donation_amount: donationAmount,
             website,
             status: 'pending',
-            timestamp: timestamp || new Date()
-        });
+            timestamp: timestamp ? new Date(timestamp) : new Date()
+        };
 
-        await donation.save();
+        const docRef = db.collection('donations').doc(transactionId);
+        await docRef.set(newDonation);
 
-        // Log transaction
-        const log = new TransactionLog({
-            transactionId,
-            ngoId,
-            donationAmount,
+        const newLog = {
+            transaction_id: transactionId,
+            user_id: userId || null,
+            ngo_id: ngoId,
+            donation_amount: donationAmount,
             action: 'initiated',
             details: {
                 originalAmount,
                 roundedAmount,
                 website
-            }
-        });
+            },
+            timestamp: new Date()
+        };
 
-        await log.save();
+        await db.collection('transaction_logs').add(newLog);
 
         console.log(`✓ Donation recorded: ${transactionId} - ₹${donationAmount} to ${ngoId}`);
 
         res.status(201).json({
             success: true,
             transactionId,
-            donation
+            donation: mapDonationToFrontend(newDonation)
         });
     } catch (error) {
         console.error('Error recording donation:', error);
@@ -84,8 +98,8 @@ router.post('/record', async (req, res) => {
     }
 });
 
-// Create Razorpay payment link
-router.post('/create-payment-link', async (req, res) => {
+// Create Razorpay payment link (protected)
+router.post('/create-payment-link', requireAuth, async (req, res) => {
     try {
         const {
             originalAmount,
@@ -95,32 +109,35 @@ router.post('/create-payment-link', async (req, res) => {
             ngoName,
             website
         } = req.body;
+        
+        const userId = req.user.uid; // Get from decoded token
 
-        // Validation
         if (!originalAmount || !roundedAmount || !donationAmount || !ngoId || !ngoName || !website) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
+        const db = getDB();
         const transactionId = `txn-${uuidv4()}`;
 
-        // Create donation record in pending status
-        const donation = new Donation({
-            transactionId,
-            ngoId,
-            ngoName,
-            originalAmount,
-            roundedAmount,
-            donationAmount,
+        const newDonation = {
+            transaction_id: transactionId,
+            user_id: userId || null,
+            ngo_id: ngoId,
+            ngo_name: ngoName,
+            original_amount: originalAmount,
+            rounded_amount: roundedAmount,
+            donation_amount: donationAmount,
             website,
             status: 'pending',
             timestamp: new Date()
-        });
+        };
 
-        await donation.save();
+        const docRef = db.collection('donations').doc(transactionId);
+        await docRef.set(newDonation);
 
         // Create Razorpay Payment Link
         const paymentLinkRequest = {
-            amount: Math.round(donationAmount * 100), // Razorpay expects amount in paise
+            amount: Math.round(donationAmount * 100),
             currency: "INR",
             accept_partial: false,
             description: `Donation to ${ngoName || 'NGO'} via RoundUp`,
@@ -129,15 +146,12 @@ router.post('/create-payment-link', async (req, res) => {
                 email: "donor@example.com",
                 contact: "9876543210"
             },
-            notify: {
-                sms: false,
-                email: false
-            },
+            notify: { sms: false, email: false },
             reminder_enable: false,
             notes: {
-                transactionId: transactionId,
-                ngoId: ngoId,
-                website: website
+                transactionId,
+                ngoId,
+                website
             },
             callback_url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/donations/callback/${transactionId}`,
             callback_method: "get"
@@ -145,22 +159,19 @@ router.post('/create-payment-link', async (req, res) => {
 
         const paymentLink = await razorpay.paymentLink.create(paymentLinkRequest);
 
-        // Update donation with Razorpay Pay Link ID
-        donation.upiTransactionId = paymentLink.id; // Using this field temporarily or could add razorpayPaymentLinkId
-        await donation.save();
+        // Update donation
+        await docRef.update({ upi_transaction_id: paymentLink.id });
 
         // Log transaction
-        const log = new TransactionLog({
-            transactionId,
-            ngoId,
-            donationAmount,
+        await db.collection('transaction_logs').add({
+            transaction_id: transactionId,
+            user_id: userId || null,
+            ngo_id: ngoId,
+            donation_amount: donationAmount,
             action: 'payment_link_created',
-            details: {
-                paymentLinkId: paymentLink.id,
-                paymentLinkUrl: paymentLink.short_url
-            }
+            details: { paymentLinkId: paymentLink.id, paymentLinkUrl: paymentLink.short_url },
+            timestamp: new Date()
         });
-        await log.save();
 
         console.log(`✓ Razorpay Payment Link created: ${paymentLink.id} for txn ${transactionId}`);
 
@@ -175,21 +186,16 @@ router.post('/create-payment-link', async (req, res) => {
     }
 });
 
-// Razorpay Callback - Handles redirection after payment (Test environment simulation)
+// Razorpay Callback
 router.get('/callback/:transactionId', async (req, res) => {
     try {
         const { transactionId } = req.params;
         const { razorpay_payment_id, razorpay_payment_link_status } = req.query;
+        const db = getDB();
 
-        console.log(`Callback received for ${transactionId}: status=${razorpay_payment_link_status}`);
-
-        // Add headers to help with Local Network Access issues in Chrome
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Private-Network', 'true');
 
-        // In a real app, you'd verify the signature here. 
-        // For test env, we'll update based on status.
-        
         let status = 'pending';
         if (razorpay_payment_link_status === 'paid') {
             status = 'completed';
@@ -198,19 +204,20 @@ router.get('/callback/:transactionId', async (req, res) => {
         }
 
         if (status !== 'pending') {
-            await Donation.findOneAndUpdate(
-                { transactionId },
-                { status, upiTransactionId: razorpay_payment_id }
-            );
+            const docRef = db.collection('donations').doc(transactionId);
+            await docRef.update({ 
+                status, 
+                upi_transaction_id: razorpay_payment_id 
+            });
 
-            await new TransactionLog({
-                transactionId,
+            await db.collection('transaction_logs').add({
+                transaction_id: transactionId,
                 action: status,
-                details: { razorpay_payment_id }
-            }).save();
+                details: { razorpay_payment_id },
+                timestamp: new Date()
+            });
         }
 
-        // Redirect to a premium success/failure page
         res.send(`
             <!DOCTYPE html>
             <html lang="en">
@@ -218,124 +225,56 @@ router.get('/callback/:transactionId', async (req, res) => {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>RoundUp - Donation Status</title>
-                <link rel="preconnect" href="https://fonts.googleapis.com">
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
                 <style>
-                    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: 'Inter', sans-serif;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        height: 100vh;
-                        margin: 0;
-                        background: #F9F8F6;
-                        color: #1A1A1A;
-                    }
-                    .card {
-                        background: transparent;
-                        border-top: 2px solid ${status === 'completed' ? '#D4AF37' : '#1A1A1A'};
-                        padding: 4rem 3rem;
-                        text-align: center;
-                        max-width: 440px;
-                        width: 90%;
-                        animation: revealUp 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-                    }
-                    @keyframes revealUp {
-                        from { opacity: 0; transform: translateY(24px); }
-                        to { opacity: 1; transform: translateY(0); }
-                    }
-                    .status-label {
-                        display: block;
-                        font-family: 'Inter', sans-serif;
-                        font-size: 10px;
-                        font-weight: 500;
-                        text-transform: uppercase;
-                        letter-spacing: 0.25em;
-                        color: #6C6863;
-                        margin-bottom: 1.5rem;
-                    }
-                    h1 {
-                        font-family: 'Playfair Display', serif;
-                        font-size: 2.5rem;
-                        font-weight: 400;
-                        line-height: 1;
-                        margin-bottom: 1.25rem;
-                        color: #1A1A1A;
-                    }
+                    body { font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #F9F8F6; color: #1A1A1A; }
+                    .card { background: transparent; border-top: 2px solid ${status === 'completed' ? '#D4AF37' : '#1A1A1A'}; padding: 4rem 3rem; text-align: center; max-width: 440px; width: 90%; }
+                    h1 { font-family: 'Playfair Display', serif; font-size: 2.5rem; }
                     h1 em { font-style: italic; color: #D4AF37; }
-                    p {
-                        margin: 0 0 2.5rem;
-                        color: #6C6863;
-                        line-height: 1.625;
-                        font-size: 0.9375rem;
-                    }
-                    .btn {
-                        display: inline-flex;
-                        align-items: center;
-                        justify-content: center;
-                        height: 3rem;
-                        padding: 0 2.5rem;
-                        background: #1A1A1A;
-                        color: #F9F8F6;
-                        font-family: 'Inter', sans-serif;
-                        font-size: 10px;
-                        font-weight: 500;
-                        text-transform: uppercase;
-                        letter-spacing: 0.2em;
-                        border: none;
-                        border-radius: 0;
-                        cursor: pointer;
-                        transition: all 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-                        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-                    }
-                    .btn:hover {
-                        background: #D4AF37;
-                        box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-                    }
+                    .btn { background: #1A1A1A; color: #F9F8F6; padding: 1rem 2.5rem; text-transform: uppercase; letter-spacing: 0.2em; border: none; cursor: pointer; }
                 </style>
             </head>
             <body>
                 <div class="card">
-                    <span class="status-label">${status === 'completed' ? 'Donation Confirmed' : 'Payment ' + status}</span>
                     <h1>${status === 'completed' ? 'Thank <em>You</em>' : 'Payment <em>' + status + '</em>'}</h1>
-                    <p>
-                        ${status === 'completed' 
-                            ? 'Your contribution has been received and recorded. Every round-up creates lasting impact.' 
-                            : 'There was an issue processing your payment. Please try again or contact support.'}
-                    </p>
+                    <p>${status === 'completed' ? 'Your contribution has been received.' : 'There was an issue processing your payment.'}</p>
                     <button onclick="closePopup()" class="btn">Close</button>
                     <script>
-                        function closePopup() {
-                            if (window.parent) {
-                                window.parent.postMessage('payment-success', '*');
-                            }
-                        }
-                        if ("${status}" === "completed") {
-                            setTimeout(() => {}, 5000);
-                        }
+                        function closePopup() { if (window.parent) window.parent.postMessage('payment-success', '*'); }
                     </script>
                 </div>
             </body>
             </html>
         `);
     } catch (error) {
-        console.error('Error in Razorpay callback:', error);
+        console.error('Error in callback:', error);
         res.status(500).send('Internal Server Error');
     }
 });
 
 // Get recent donations
-router.get('/recent', async (req, res) => {
+router.get('/recent', requireAuth, async (req, res) => {
     try {
-        const limit = req.query.limit || 10;
-        const donations = await Donation.find()
-            .sort({ timestamp: -1 })
-            .limit(parseInt(limit))
-            .select('-__v');
+        const limit = parseInt(req.query.limit) || 10;
+        const db = getDB();
+        const userId = req.user.uid;
+        
+        const snapshot = await db.collection('donations')
+            .where('user_id', '==', userId)
+            .get();
 
-        res.json(donations);
+        const donations = [];
+        snapshot.forEach(doc => {
+            donations.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Sort in memory to avoid needing a composite index
+        donations.sort((a, b) => {
+            const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+            const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+            return timeB - timeA;
+        });
+
+        res.json(donations.slice(0, limit).map(mapDonationToFrontend));
     } catch (error) {
         console.error('Error fetching donations:', error);
         res.status(500).json({ error: 'Failed to fetch donations' });
@@ -343,70 +282,98 @@ router.get('/recent', async (req, res) => {
 });
 
 // Get donation history
-router.get('/history', async (req, res) => {
+router.get('/history', requireAuth, async (req, res) => {
     try {
-        const donations = await Donation.find()
-            .sort({ timestamp: -1 })
-            .select('-__v');
+        const db = getDB();
+        const userId = req.user.uid;
+        
+        const snapshot = await db.collection('donations')
+            .where('user_id', '==', userId)
+            .get();
+            
+        const donations = [];
+        snapshot.forEach(doc => {
+            donations.push({ id: doc.id, ...doc.data() });
+        });
 
-        res.json(donations);
+        // Sort in memory to avoid needing a composite index
+        donations.sort((a, b) => {
+            const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+            const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+            return timeB - timeA;
+        });
+
+        res.json(donations.map(mapDonationToFrontend));
     } catch (error) {
         console.error('Error fetching history:', error);
         res.status(500).json({ error: 'Failed to fetch history' });
     }
 });
 
-// Get donation by transaction ID
-router.get('/:transactionId', async (req, res) => {
+// Get donation by transaction ID (protected)
+router.get('/:transactionId', requireAuth, async (req, res) => {
     try {
-        const donation = await Donation.findOne({ transactionId: req.params.transactionId });
+        const db = getDB();
+        const userId = req.user.uid;
+        const doc = await db.collection('donations').doc(req.params.transactionId).get();
 
-        if (!donation) {
+        if (!doc.exists) {
             return res.status(404).json({ error: 'Donation not found' });
         }
 
-        res.json(donation);
+        const donation = doc.data();
+        if (donation.user_id !== userId) {
+            return res.status(403).json({ error: 'Forbidden: Access denied' });
+        }
+
+        res.json(mapDonationToFrontend({ id: doc.id, ...donation }));
     } catch (error) {
+        console.error('Error fetching donation:', error);
         res.status(500).json({ error: 'Failed to fetch donation' });
     }
 });
 
-// Update donation status
-router.patch('/:transactionId/status', async (req, res) => {
+// Update donation status (protected)
+router.patch('/:transactionId/status', requireAuth, async (req, res) => {
     try {
         const { status, upiTransactionId } = req.body;
-
+        const userId = req.user.uid;
         if (!['pending', 'completed', 'failed'].includes(status)) {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
-        const donation = await Donation.findOneAndUpdate(
-            { transactionId: req.params.transactionId },
-            { 
-                status,
-                upiTransactionId: upiTransactionId || undefined
-            },
-            { new: true }
-        );
+        const db = getDB();
+        const docRef = db.collection('donations').doc(req.params.transactionId);
+        const doc = await docRef.get();
 
-        if (!donation) {
+        if (!doc.exists) {
             return res.status(404).json({ error: 'Donation not found' });
         }
 
-        // Log status update
-        const log = new TransactionLog({
-            transactionId: req.params.transactionId,
-            ngoId: donation.ngoId,
-            donationAmount: donation.donationAmount,
-            action: status === 'completed' ? 'completed' : 'failed',
-            details: { upiTransactionId }
+        const donationData = doc.data();
+        if (donationData.user_id !== userId) {
+            return res.status(403).json({ error: 'Forbidden: Access denied' });
+        }
+
+        await docRef.update({ 
+            status, 
+            upi_transaction_id: upiTransactionId || null 
         });
 
-        await log.save();
+        const updatedDoc = await docRef.get();
+        const finalData = updatedDoc.data();
 
-        console.log(`✓ Donation ${req.params.transactionId} status updated to ${status}`);
+        await db.collection('transaction_logs').add({
+            transaction_id: req.params.transactionId,
+            user_id: userId,
+            ngo_id: finalData.ngo_id,
+            donation_amount: finalData.donation_amount,
+            action: status === 'completed' ? 'completed' : 'failed',
+            details: { upiTransactionId },
+            timestamp: new Date()
+        });
 
-        res.json(donation);
+        res.json(mapDonationToFrontend({ id: updatedDoc.id, ...finalData }));
     } catch (error) {
         console.error('Error updating donation:', error);
         res.status(500).json({ error: 'Failed to update donation' });
@@ -414,37 +381,47 @@ router.patch('/:transactionId/status', async (req, res) => {
 });
 
 // Get statistics
-router.get('/stats/summary', async (req, res) => {
+router.get('/stats/summary', requireAuth, async (req, res) => {
     try {
-        const totalDonations = await Donation.countDocuments();
-        const totalAmount = await Donation.aggregate([
-            { $match: { status: 'completed' } },
-            { $group: { _id: null, total: { $sum: '$donationAmount' } } }
-        ]);
+        const db = getDB();
+        const userId = req.user.uid;
+        
+        const snapshot = await db.collection('donations')
+            .where('user_id', '==', userId)
+            .get();
+            
+        const donations = [];
+        snapshot.forEach(doc => {
+            donations.push({ id: doc.id, ...doc.data() });
+        });
 
-        const byNGO = await Donation.aggregate([
-            { $match: { status: 'completed' } },
-            { $group: { 
-                _id: '$ngoId', 
-                count: { $sum: 1 },
-                total: { $sum: '$donationAmount' }
-            }}
-        ]);
+        const completed = donations.filter(d => d.status === 'completed');
+        const totalAmount = completed.reduce((sum, d) => sum + parseFloat(d.donation_amount || 0), 0);
 
-        const byWebsite = await Donation.aggregate([
-            { $match: { status: 'completed' } },
-            { $group: { 
-                _id: '$website', 
-                count: { $sum: 1 },
-                total: { $sum: '$donationAmount' }
-            }}
-        ]);
+        const byNGO = {};
+        const byWebsite = {};
+
+        completed.forEach(d => {
+            if (!byNGO[d.ngo_id]) byNGO[d.ngo_id] = { count: 0, total: 0 };
+            byNGO[d.ngo_id].count++;
+            byNGO[d.ngo_id].total += parseFloat(d.donation_amount || 0);
+
+            if (d.website) {
+                if (!byWebsite[d.website]) byWebsite[d.website] = { count: 0, total: 0 };
+                byWebsite[d.website].count++;
+                byWebsite[d.website].total += parseFloat(d.donation_amount || 0);
+            }
+        });
+
+        // Map back to expected output format
+        const byNgoArray = Object.keys(byNGO).map(k => ({ _id: k, count: byNGO[k].count, total: byNGO[k].total }));
+        const byWebsiteArray = Object.keys(byWebsite).map(k => ({ _id: k, count: byWebsite[k].count, total: byWebsite[k].total }));
 
         res.json({
-            totalDonations,
-            totalAmount: totalAmount[0]?.total || 0,
-            byNGO,
-            byWebsite
+            totalDonations: donations.length,
+            totalAmount,
+            byNGO: byNgoArray,
+            byWebsite: byWebsiteArray
         });
     } catch (error) {
         console.error('Error fetching stats:', error);
@@ -453,13 +430,48 @@ router.get('/stats/summary', async (req, res) => {
 });
 
 // Clear history (for testing)
-router.post('/clear', async (req, res) => {
+router.post('/clear', requireAuth, async (req, res) => {
     try {
-        await Donation.deleteMany({});
-        await TransactionLog.deleteMany({});
-        res.json({ message: 'All donation records cleared' });
+        const db = getDB();
+        const userId = req.user.uid;
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'User ID missing' });
+        }
+
+        const batch = db.batch();
+        let opsCount = 0;
+
+        const donationsSnapshot = await db.collection('donations')
+            .where('user_id', '==', userId)
+            .get();
+            
+        donationsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+            opsCount++;
+        });
+
+        const logsSnapshot = await db.collection('transaction_logs')
+            .where('user_id', '==', userId)
+            .get();
+            
+        logsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+            opsCount++;
+        });
+
+        if (opsCount > 0) {
+            await batch.commit();
+        }
+        
+        console.log(`✓ History cleared for UID: ${userId} (${opsCount} records)`);
+        res.json({ success: true, message: 'History cleared successfully' });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to clear history' });
+        console.error('Error clearing history:', error);
+        res.status(500).json({ 
+            error: 'Failed to clear history', 
+            details: error.message
+        });
     }
 });
 

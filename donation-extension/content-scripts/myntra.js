@@ -275,10 +275,7 @@ class MyntraCartDetector {
         console.log('Myntra: notifyDonation called with amount:', amount);
         chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
             console.log('Myntra: Got settings:', response);
-            if (!response?.selectedNGO) {
-                console.log('Myntra: No NGO selected, skipping');
-                return;
-            }
+            
             if (response.extensionEnabled === false) {
                 console.log('Myntra: Extension disabled');
                 return;
@@ -297,11 +294,11 @@ class MyntraCartDetector {
                         roundedAmount: roundedAmount,
                         donationAmount: donationAmount,
                         website: 'myntra.com',
-                        ngoId: response.selectedNGO.id,
-                        ngoName: response.selectedNGO.name,
-                        ngoUPI: response.selectedNGO.upiId,
-                        ngoDescription: response.selectedNGO.description,
-                        ngoLogo: response.selectedNGO.logo
+                        ngoId: response.selectedNGO?.id || null,
+                        ngoName: response.selectedNGO?.name || null,
+                        ngoUPI: response.selectedNGO?.upiId || null,
+                        ngoDescription: response.selectedNGO?.description || null,
+                        ngoLogo: response.selectedNGO?.logo || null
                     }
                 }, (msgResponse) => {
                     console.log('Myntra: Message response:', msgResponse);
@@ -315,7 +312,7 @@ class MyntraCartDetector {
     async getDonationData(amount) {
         return new Promise((resolve) => {
             chrome.runtime.sendMessage({ action: 'getDonationSettings' }, (response) => {
-                if (!response?.selectedNGO || response.extensionEnabled === false) {
+                if (response.extensionEnabled === false) {
                     resolve(null);
                     return;
                 }
@@ -328,11 +325,11 @@ class MyntraCartDetector {
                     roundedAmount: roundedAmount,
                     donationAmount: donationAmount,
                     website: 'myntra.com',
-                    ngoId: response.selectedNGO.id,
-                    ngoName: response.selectedNGO.name,
-                    ngoUPI: response.selectedNGO.upiId,
-                    ngoDescription: response.selectedNGO.description,
-                    ngoLogo: response.selectedNGO.logo
+                    ngoId: response.selectedNGO?.id || null,
+                    ngoName: response.selectedNGO?.name || null,
+                    ngoUPI: response.selectedNGO?.upiId || null,
+                    ngoDescription: response.selectedNGO?.description || null,
+                    ngoLogo: response.selectedNGO?.logo || null
                 });
             });
         });

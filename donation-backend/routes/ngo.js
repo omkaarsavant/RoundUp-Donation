@@ -3,64 +3,46 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { NGO } = require('../models');
+const { getDB } = require('../db');
+
+// Helper to map DB to frontend format (camelCase)
+const mapToFrontend = (ngo) => {
+    if (!ngo) return ngo;
+    return {
+        ...ngo,
+        id: ngo.id || ngo.ngo_id,
+        upiId: ngo.upi_id || ngo.upiId
+    };
+};
 
 // Get all NGOs
 router.get('/', async (req, res) => {
     try {
         const { location } = req.query;
-        let query = {};
+        const db = getDB();
+        
+        // Note: Firestore doesn't have a direct case-insensitive 'ilike' query. 
+        // For a simple implementation without a full text search engine, we'll
+        // fetch all and filter in memory, or just return them if no location is passed.
+        const ngosSnapshot = await db.collection('ngos').get();
+        let ngos = [];
+
+        ngosSnapshot.forEach(doc => {
+            ngos.push({ id: doc.id, ...doc.data() });
+        });
+
         if (location) {
-            query.location = { $regex: new RegExp(location, 'i') };
-        }
-        
-        const ngos = await NGO.find(query).select('-__v');
-        
-        // If no NGOs in database (or matching query), return sample data
-        if (ngos.length === 0) {
-            const sampleNGOs = [
-                {
-                    id: 'ngo-001',
-                    name: 'Teach India Foundation',
-                    description: 'Providing quality education to underprivileged children',
-                    upiId: 'teachindia@upi',
-                    logo: 'https://via.placeholder.com/100?text=Teach+India',
-                    category: 'education',
-                    website: 'https://teachindia.org',
-                    location: 'Mumbai'
-                },
-                {
-                    id: 'ngo-002',
-                    name: 'Doctors Without Borders',
-                    description: 'Medical aid to communities in need',
-                    upiId: 'dwb.india@upi',
-                    logo: 'https://via.placeholder.com/100?text=DWB',
-                    category: 'health',
-                    website: 'https://msf.org',
-                    location: 'Mumbai'
-                },
-                {
-                    id: 'ngo-005',
-                    name: 'Disaster Relief Network',
-                    description: 'Emergency aid for disaster-affected communities',
-                    upiId: 'drn.india@upi',
-                    logo: 'https://via.placeholder.com/100?text=DRN',
-                    category: 'disaster',
-                    website: 'https://disasterrelief.org',
-                    location: 'Nashik'
-                }
-            ];
-            
-            // Filter sample data if location provided
-            if (location) {
-                const filtered = sampleNGOs.filter(n => n.location.toLowerCase() === location.toLowerCase());
-                return res.json(filtered);
-            }
-
-            return res.json(sampleNGOs);
+            const lowerQuery = location.toLowerCase();
+            ngos = ngos.filter(ngo => 
+                (ngo.location && ngo.location.toLowerCase().includes(lowerQuery)) ||
+                (ngo.category && ngo.category.toLowerCase().includes(lowerQuery)) ||
+                (ngo.description && ngo.description.toLowerCase().includes(lowerQuery))
+            );
         }
 
-        res.json(ngos);
+        // Return found NGOs
+
+        res.json(ngos.map(mapToFrontend));
     } catch (error) {
         console.error('Error fetching NGOs:', error);
         res.status(500).json({ error: 'Failed to fetch NGOs' });
@@ -70,14 +52,16 @@ router.get('/', async (req, res) => {
 // Get specific NGO
 router.get('/:id', async (req, res) => {
     try {
-        const ngo = await NGO.findOne({ id: req.params.id });
+        const db = getDB();
+        const doc = await db.collection('ngos').doc(req.params.id).get();
 
-        if (!ngo) {
+        if (!doc.exists) {
             return res.status(404).json({ error: 'NGO not found' });
         }
 
-        res.json(ngo);
+        res.json(mapToFrontend({ id: doc.id, ...doc.data() }));
     } catch (error) {
+        console.error('Error fetching specific NGO:', error);
         res.status(500).json({ error: 'Failed to fetch NGO' });
     }
 });
@@ -87,24 +71,30 @@ router.post('/', async (req, res) => {
     try {
         const { name, description, upiId, logo, category, website, phone, location } = req.body;
 
-        // Validation
         if (!name || !upiId || !description) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const ngo = new NGO({
-            id: `ngo-${uuidv4().slice(0, 8)}`,
+        const db = getDB();
+        const newNgoId = `ngo-${uuidv4().slice(0, 8)}`;
+        
+        const newNgo = {
+            ngo_id: newNgoId, // keep for compatibility if needed, though doc.id is better
             name,
             description,
-            upiId,
+            upi_id: upiId,
             logo: logo || 'https://via.placeholder.com/100',
             category: category || 'other',
             website: website || '',
-            location: location || 'Nashik'
-        });
+            phone: phone || '',
+            location: location || 'Nashik',
+            created_at: new Date()
+        };
 
-        await ngo.save();
-        res.status(201).json(ngo);
+        const docRef = db.collection('ngos').doc(newNgoId);
+        await docRef.set(newNgo);
+
+        res.status(201).json(mapToFrontend({ id: newNgoId, ...newNgo }));
     } catch (error) {
         console.error('Error creating NGO:', error);
         res.status(500).json({ error: 'Failed to create NGO' });
@@ -114,18 +104,26 @@ router.post('/', async (req, res) => {
 // Update NGO
 router.put('/:id', async (req, res) => {
     try {
-        const ngo = await NGO.findOneAndUpdate(
-            { id: req.params.id },
-            req.body,
-            { new: true }
-        );
+        const db = getDB();
+        const docRef = db.collection('ngos').doc(req.params.id);
+        
+        const updates = { ...req.body, updated_at: new Date() };
+        if (updates.upiId) {
+            updates.upi_id = updates.upiId;
+            delete updates.upiId;
+        }
+        delete updates.id; // don't try to update id
 
-        if (!ngo) {
+        await docRef.update(updates);
+
+        const updatedDoc = await docRef.get();
+        if (!updatedDoc.exists) {
             return res.status(404).json({ error: 'NGO not found' });
         }
 
-        res.json(ngo);
+        res.json(mapToFrontend({ id: updatedDoc.id, ...updatedDoc.data() }));
     } catch (error) {
+        console.error('Error updating NGO:', error);
         res.status(500).json({ error: 'Failed to update NGO' });
     }
 });
@@ -133,14 +131,19 @@ router.put('/:id', async (req, res) => {
 // Delete NGO
 router.delete('/:id', async (req, res) => {
     try {
-        const ngo = await NGO.findOneAndDelete({ id: req.params.id });
-
-        if (!ngo) {
+        const db = getDB();
+        const docRef = db.collection('ngos').doc(req.params.id);
+        
+        const doc = await docRef.get();
+        if (!doc.exists) {
             return res.status(404).json({ error: 'NGO not found' });
         }
 
+        await docRef.delete();
+
         res.json({ message: 'NGO deleted successfully' });
     } catch (error) {
+        console.error('Error deleting NGO:', error);
         res.status(500).json({ error: 'Failed to delete NGO' });
     }
 });

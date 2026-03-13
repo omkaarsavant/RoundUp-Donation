@@ -9,7 +9,8 @@
     "storage",
     "webRequest",
     "declarativeNetRequest",
-    "declarativeNetRequestFeedback"
+    "declarativeNetRequestFeedback",
+    "identity"
   ],
   "host_permissions": [
     "https://www.amazon.in/*",
@@ -18,44 +19,85 @@
     "http://localhost:5000/*",
     "https://api.donation-app.com/*",
     "https://*.razorpay.com/*",
-    "https://rzp.io/*"
+    "https://rzp.io/*",
+    "https://*.firebaseapp.com/*",
+    "https://*.googleapis.com/*"
   ],
+  "oauth2": {
+    "client_id": "",
+    "scopes": [
+      "openid",
+      "email",
+      "profile"
+    ]
+  },
   "declarative_net_request": {
-    "rule_resources": [{
-      "id": "ruleset_1",
-      "enabled": true,
-      "path": "net_rules.json"
-    }]
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "net_rules.json"
+      }
+    ]
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Round-Up Donations"
+    "default_title": "Round-Up Donations",
+    "default_icon": {
+      "16": "icons/logo.png",
+      "48": "icons/logo.png",
+      "128": "icons/logo.png"
+    }
+  },
+  "icons": {
+    "16": "icons/logo.png",
+    "48": "icons/logo.png",
+    "128": "icons/logo.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
-      "matches": ["https://www.amazon.in/*"],
-      "js": ["content-scripts/amazon.js"],
+      "matches": [
+        "https://www.amazon.in/*"
+      ],
+      "js": [
+        "content-scripts/amazon.js"
+      ],
       "run_at": "document_end"
     },
     {
-      "matches": ["https://www.flipkart.com/*"],
-      "js": ["content-scripts/flipkart.js"],
+      "matches": [
+        "https://www.flipkart.com/*"
+      ],
+      "js": [
+        "content-scripts/flipkart.js"
+      ],
       "run_at": "document_end"
     },
     {
-      "matches": ["https://www.myntra.com/*"],
-      "js": ["content-scripts/myntra.js"],
+      "matches": [
+        "https://www.myntra.com/*"
+      ],
+      "js": [
+        "content-scripts/myntra.js"
+      ],
       "run_at": "document_end"
     }
   ],
   "options_page": "settings.html",
   "web_accessible_resources": [
     {
-      "resources": ["injected.js"],
-      "matches": ["https://www.amazon.in/*", "https://www.flipkart.com/*", "https://www.myntra.com/*"]
+      "resources": [
+        "injected.js"
+      ],
+      "matches": [
+        "https://www.amazon.in/*",
+        "https://www.flipkart.com/*",
+        "https://www.myntra.com/*"
+      ]
     }
   ]
 }

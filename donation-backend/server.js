@@ -5,14 +5,15 @@ const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
 
-// Import database and models
-const connectDB = require('./db');
-const { NGO, User, Donation, TransactionLog } = require('./models');
+// Import database (Supabase)
+const { connectDB } = require('./db');
 
 // Import routes
 const ngoRoutes = require('./routes/ngo');
 const donationRoutes = require('./routes/donations');
 const userRoutes = require('./routes/user');
+
+const path = require('path');
 
 // Initialize app
 const app = express();
@@ -22,36 +23,37 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet({
     contentSecurityPolicy: false, // Disable CSP for easier development/testing
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // ALLOW cross-origin images
     frameguard: false // Disable X-Frame-Options
 }));
 app.use(cors({
-    origin: [
-        'http://localhost:3000',
-        'http://localhost:5000',
-        'chrome-extension://*'
-    ],
+    origin: '*',
     credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 // Request logging & Private Network Access support
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        console.log(`${new Date().toISOString()} - ${req.method} ${req.path} [${res.statusCode}] - ${duration}ms`);
+    });
     
-    // Support Chrome's Private Network Access preflights
-    if (req.headers['access-control-request-private-network']) {
-        res.setHeader('Access-Control-Allow-Private-Network', 'true');
-    }
-    
-    // For non-options requests, still allow private network access
+    // Set headers for all requests
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     
     if (req.method === 'OPTIONS') {
         return res.sendStatus(204);
     }
     next();
 });
+
+app.use(express.static(path.join(__dirname, 'public'))); // Serve NGO logos and other static assets
 
 // Health check & Root
 app.get('/', (req, res) => {

@@ -1,93 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Round-Up Donations Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/design-tokens.css">
     <link rel="stylesheet" href="styles/settings.css">
 </head>
+
 <body>
-    <div class="container">
-        <header>
-            <h1>Round-Up Donations Settings</h1>
-            <p>Configure your donation preferences</p>
+    <!-- Luxury structural elements -->
+    <div class="paper-noise"></div>
+    <div class="lux-grid-line lux-grid-line-1"></div>
+    <div class="lux-grid-line lux-grid-line-2"></div>
+    <div class="lux-grid-line lux-grid-line-3"></div>
+    <div class="lux-grid-line lux-grid-line-4"></div>
+
+    <div class="container lux-container">
+        <header class="lux-header">
+            <span class="lux-label">Settings </span>
+            <h1 class="lux-h1">Donation <em>Preferences</em></h1>
+            <p class="lux-tagline">Configure your contribution to meaningful causes.</p>
         </header>
 
-        <main>
+        <main class="lux-main">
 
             <!-- Donation Location -->
-            <section class="section">
-                <h2>Donation Location</h2>
-                <p class="description">Select your city for local NGO focus</p>
+            <section class="lux-section">
+                <h2 class="lux-h2">Donation Location</h2>
+                <p class="lux-description">Select your city for your local ngos.</p>
                 <div class="location-selection">
-                    <div class="radio-group-horizontal">
-                        <label class="radio">
+                    <div class="radio-group-horizontal lux-radio-group">
+                        <label class="radio lux-radio">
                             <input type="radio" name="locationMode" value="auto" checked>
                             <span class="radio-label">Auto Detect</span>
                         </label>
-                        <label class="radio">
+                        <label class="radio lux-radio">
                             <input type="radio" name="locationMode" value="select">
                             <span class="radio-label">Select City</span>
                         </label>
                     </div>
                 </div>
-                
+
                 <div id="citySelectorGroup" class="city-selector-group hidden">
-                    <select id="citySelect" class="select-field">
+                    <select id="citySelect" class="lux-select">
                         <option value="Nashik">Nashik</option>
                         <option value="Pune">Pune</option>
                         <option value="Mumbai">Mumbai</option>
                     </select>
                 </div>
-                
-                <div id="detectedCityInfo" class="location-status">
+
+                <div id="detectedCityInfo" class="lux-metadata">
                     Detected City: <span id="detectedCityName">Searching...</span>
                 </div>
-            </section>
 
-            <!-- NGO Selection -->
-            <section class="section">
-                <h2>Select NGO for Donations</h2>
-                <p class="description">Choose which NGO receives your donations</p>
-                
-                <div id="ngoList" class="ngo-list">
-                    <div class="loading">Loading NGOs...</div>
+                <div id="ngoList" class="lux-ngo-list">
+                    <div class="loading">Inquiring available causes...</div>
                 </div>
             </section>
 
             <!-- Transaction History -->
-            <section class="section">
-                <h2>Your Donation History</h2>
-                <div class="history-controls">
-                    <button id="viewHistory" class="btn btn-secondary">View Full History</button>
-                    <button id="exportHistory" class="btn btn-secondary">Export CSV</button>
-                    <button id="clearHistory" class="btn btn-danger">Clear History</button>
+            <section class="lux-section">
+                <h2 class="lux-h2">Donation <em>History</em></h2>
+                <div class="history-controls lux-btn-group">
+                    <button id="viewHistory" class="lux-btn lux-btn-secondary">View Full History</button>
+                    <button id="exportHistory" class="lux-btn lux-btn-secondary">Export Data</button>
+                    <button id="clearHistory" class="lux-btn lux-btn-secondary">Clear History</button>
+                    <button id="saveBtn" class="lux-btn lux-btn-primary">Save Settings</button>
                 </div>
-                <div id="historyPreview" class="history-preview">
-                    <p>Loading your donation history...</p>
+                <div id="historyPreview" class="lux-history-preview">
+                    <p>Retrieving your donation legacy...</p>
                 </div>
             </section>
 
             <!-- Save Button -->
-            <div class="actions">
-                <button id="saveBtn" class="btn btn-primary btn-large">Save Settings</button>
-                <span id="status" class="status-message"></span>
+            <div class="lux-actions">
+
+                <span id="status" class="lux-status-message"></span>
             </div>
         </main>
 
         <!-- Modal for History -->
-        <div id="historyModal" class="modal hidden">
-            <div class="modal-content">
-                <button class="modal-close" id="closeModal">×</button>
-                <h2>Donation History</h2>
-                <div id="historyTable"></div>
+        <div id="historyModal" class="lux-modal hidden">
+            <div class="lux-modal-content">
+                <button class="lux-modal-close" id="closeModal">Close</button>
+                <h2 class="lux-h2">Full <em>History</em></h2>
+                <div id="historyTable" class="lux-table-container"></div>
             </div>
         </div>
 
         <!-- Modal for NGO Detail -->
-        <div id="ngoModal" class="modal hidden">
-            <div class="modal-content ngo-modal-content">
-                <button class="modal-close" id="closeNgoModal">×</button>
+        <div id="ngoModal" class="lux-modal hidden">
+            <div class="lux-modal-content lux-ngo-modal-content">
+                <button class="lux-modal-close" id="closeNgoModal">Close</button>
                 <div id="ngoModalDetail">
                     <!-- Dynamic content will be injected here -->
                 </div>
@@ -98,4 +109,5 @@
     <script src="libs/jspdf.umd.min.js"></script>
     <script src="settings.js"></script>
 </body>
+
 </html>

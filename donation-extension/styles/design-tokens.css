@@ -1,0 +1,83 @@
+/* Luxury / Editorial Design Tokens */
+
+:root {
+    /* Colors - Sophisticated Monochrome */
+    --lux-bg: #F9F8F6; /* Warm Alabaster */
+    --lux-fg: #1A1A1A; /* Rich Charcoal */
+    --lux-muted-bg: #EBE5DE; /* Pale Taupe */
+    --lux-muted-fg: #6C6863; /* Warm Grey */
+    --lux-accent: #D4AF37; /* Metallic Gold */
+    --lux-accent-fg: #FFFFFF; /* Pure White */
+    
+    /* Typography */
+    --lux-font-heading: 'Playfair Display', serif;
+    --lux-font-body: 'Inter', sans-serif;
+    
+    /* Letter Spacing */
+    --lux-tracking-label: 0.25em;
+    --lux-tracking-btn: 0.2em;
+    --lux-tracking-tight: -0.02em;
+    
+    /* Line Height */
+    --lux-leading-headline: 0.9;
+    --lux-leading-body: 1.625;
+    
+    /* Transitions */
+    --lux-duration-fast: 300ms;
+    --lux-duration-normal: 500ms;
+    --lux-duration-slow: 700ms;
+    --lux-duration-cinematic: 1500ms;
+    --lux-easing-luxury: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    
+    /* Shadows - Subtle Layered Depth */
+    --lux-shadow-sm: 0 2px 8px rgba(0,0,0,0.02);
+    --lux-shadow-md: 0 4px 24px rgba(0,0,0,0.08);
+    --lux-shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+    --lux-shadow-btn: 0 4px 16px rgba(0,0,0,0.15);
+    --lux-shadow-btn-hover: 0 8px 24px rgba(0,0,0,0.25);
+    --lux-shadow-inset: inset 0 0 0 1px rgba(0,0,0,0.08);
+    
+    /* Layout */
+    --lux-max-width: 1600px;
+    --lux-padding-desktop: 4rem;
+    --lux-padding-mobile: 2rem;
+}
+
+/* Base Styles */
+body {
+    background-color: var(--lux-bg);
+    color: var(--lux-fg);
+    font-family: var(--lux-font-body);
+    line-height: var(--lux-leading-body);
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* Paper Noise Texture Overlay */
+.paper-noise {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Visible Grid System */
+.lux-grid-line {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: rgba(26, 26, 26, 0.1);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.lux-grid-line-1 { left: 0%; }
+.lux-grid-line-2 { left: 33.333%; }
+.lux-grid-line-3 { left: 66.666%; }
+.lux-grid-line-4 { left: 100%; }

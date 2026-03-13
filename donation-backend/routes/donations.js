@@ -218,108 +218,102 @@ router.get('/callback/:transactionId', async (req, res) => {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>RoundUp - Donation Status</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
                 <style>
+                    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
                     body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                        font-family: 'Inter', sans-serif;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         height: 100vh;
                         margin: 0;
-                        background: #f0f2f5;
-                        color: #1a1a1a;
+                        background: #F9F8F6;
+                        color: #1A1A1A;
                     }
                     .card {
-                        background: white;
-                        padding: 40px;
-                        border-radius: 20px;
-                        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                        background: transparent;
+                        border-top: 2px solid ${status === 'completed' ? '#D4AF37' : '#1A1A1A'};
+                        padding: 4rem 3rem;
                         text-align: center;
-                        max-width: 400px;
+                        max-width: 440px;
                         width: 90%;
-                        animation: slideUp 0.5s ease-out;
+                        animation: revealUp 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
                     }
-                    @keyframes slideUp {
-                        from { opacity: 0; transform: translateY(20px); }
+                    @keyframes revealUp {
+                        from { opacity: 0; transform: translateY(24px); }
                         to { opacity: 1; transform: translateY(0); }
                     }
-                    .icon {
-                        width: 80px;
-                        height: 80px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin: 0 auto 24px;
-                        font-size: 40px;
-                    }
-                    .success-icon {
-                        background: #e8f5e9;
-                        color: #2e7d32;
-                    }
-                    .error-icon {
-                        background: #ffebee;
-                        color: #c62828;
+                    .status-label {
+                        display: block;
+                        font-family: 'Inter', sans-serif;
+                        font-size: 10px;
+                        font-weight: 500;
+                        text-transform: uppercase;
+                        letter-spacing: 0.25em;
+                        color: #6C6863;
+                        margin-bottom: 1.5rem;
                     }
                     h1 {
-                        margin: 0 0 16px;
-                        font-size: 24px;
-                        font-weight: 700;
+                        font-family: 'Playfair Display', serif;
+                        font-size: 2.5rem;
+                        font-weight: 400;
+                        line-height: 1;
+                        margin-bottom: 1.25rem;
+                        color: #1A1A1A;
                     }
+                    h1 em { font-style: italic; color: #D4AF37; }
                     p {
-                        margin: 0 0 32px;
-                        color: #666;
-                        line-height: 1.5;
-                        font-size: 16px;
+                        margin: 0 0 2.5rem;
+                        color: #6C6863;
+                        line-height: 1.625;
+                        font-size: 0.9375rem;
                     }
                     .btn {
-                        display: inline-block;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        padding: 14px 28px;
-                        border-radius: 12px;
-                        text-decoration: none;
-                        font-weight: 600;
-                        transition: all 0.2s;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 3rem;
+                        padding: 0 2.5rem;
+                        background: #1A1A1A;
+                        color: #F9F8F6;
+                        font-family: 'Inter', sans-serif;
+                        font-size: 10px;
+                        font-weight: 500;
+                        text-transform: uppercase;
+                        letter-spacing: 0.2em;
                         border: none;
+                        border-radius: 0;
                         cursor: pointer;
-                        font-size: 16px;
-                        width: 100%;
+                        transition: all 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
                     }
                     .btn:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.3);
+                        background: #D4AF37;
+                        box-shadow: 0 8px 24px rgba(0,0,0,0.25);
                     }
-                    .success-text { color: #2e7d32; }
-                    .error-text { color: #d32f2f; }
                 </style>
             </head>
             <body>
                 <div class="card">
-                    <div class="icon ${status === 'completed' ? 'success-icon' : 'error-icon'}">
-                        ${status === 'completed' ? 'Success' : 'Alert'}
-                    </div>
-                    <h1 class="${status === 'completed' ? 'success-text' : 'error-text'}">
-                        ${status === 'completed' ? 'Thank You!' : 'Payment ' + status}
-                    </h1>
+                    <span class="status-label">${status === 'completed' ? 'Donation Confirmed' : 'Payment ' + status}</span>
+                    <h1>${status === 'completed' ? 'Thank <em>You</em>' : 'Payment <em>' + status + '</em>'}</h1>
                     <p>
                         ${status === 'completed' 
-                            ? 'Your contribution makes a real difference. We have recorded your donation.' 
+                            ? 'Your contribution has been received and recorded. Every round-up creates lasting impact.' 
                             : 'There was an issue processing your payment. Please try again or contact support.'}
                     </p>
-                    <button onclick="closePopup()" class="btn">Close Window</button>
+                    <button onclick="closePopup()" class="btn">Close</button>
                     <script>
                         function closePopup() {
                             if (window.parent) {
                                 window.parent.postMessage('payment-success', '*');
                             }
                         }
-                        // Auto-close after 5 seconds if successful
                         if ("${status}" === "completed") {
-                            setTimeout(() => {
-                                // In some browsers window.close() only works if opened by script
-                                // For the extension popup, the user can just see it and close.
-                            }, 5000);
+                            setTimeout(() => {}, 5000);
                         }
                     </script>
                 </div>

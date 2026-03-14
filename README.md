@@ -8,13 +8,9 @@ This creates a **frictionless donation experience**, allowing people to contribu
 
 ---
 
-# Screenshots
+# Demo
 
-![UI](https://github.com/user-attachments/assets/bc51a5f2-3f3c-4210-ad74-290fcec82039)
-
-![Donation Setting](https://github.com/user-attachments/assets/4075148c-aafc-4af4-8cc9-b7c712f47be9)
-
-![NGO Selection](https://github.com/user-attachments/assets/0469e535-3747-400f-8441-1e6c81ae649b)
+https://github.com/user-attachments/assets/bc6aadd2-add5-43d6-a35a-8867896425af
 
 ---
 

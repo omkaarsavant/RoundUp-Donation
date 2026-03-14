@@ -17,6 +17,10 @@
             <img src="icons/logo.png" alt="Logo" style="width: 48px; height: 48px; margin-bottom: 1rem; filter: brightness(0) invert(0);">
             <h1>Join <em>RoundUp</em></h1>
             <p>Sign in to track donations and select NGOs.</p>
+            <div class="server-status-indicator auth-status">
+                <span class="dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
         </div>
         
         <button id="googleSignInBtn" class="btn btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -114,8 +118,11 @@
                 <img src="icons/logo.png" alt="Logo" style="width: 32px; height: 32px; margin-bottom: 0.75rem; display: block;">
                 <h1>Round-Up <em>Donations</em></h1>
                 <p id="userEmailDisplay" style="font-size: 0.85rem; margin-top: 4px; color: var(--color-surface-600);"></p>
-                <span class="status-label">Status:</span>
                 <span class="status-value" id="extensionStatus">Checking...</span>
+                <div id="serverStatus" class="server-status-indicator">
+                    <span class="dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
             </div>
 
             <div class="settings-link" style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;">

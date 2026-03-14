@@ -711,3 +711,62 @@
     .lux-modal-content { width: 95%; padding: 2.5rem 1.5rem; }
     .lux-actions { flex-direction: column; align-items: flex-start; }
 }
+
+/* ============================================================
+   SERVER STATUS INDICATOR
+   ============================================================ */
+.server-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: 1.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(26, 26, 26, 0.03);
+    border: 1px solid rgba(26, 26, 26, 0.05);
+    border-radius: 0;
+    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.server-status-indicator.online {
+    background: rgba(46, 125, 50, 0.05);
+    border-color: rgba(46, 125, 50, 0.1);
+}
+
+.server-status-indicator.online .dot {
+    background: #2E7D32;
+    box-shadow: 0 0 10px rgba(46, 125, 50, 0.4);
+    animation: none;
+}
+
+.server-status-indicator .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--lux-accent);
+    animation: lux-pulse 2s infinite cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.server-status-indicator .status-text {
+    font-family: var(--lux-font-body);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--lux-muted-fg);
+    font-weight: 500;
+}
+
+@keyframes lux-pulse {
+    0% { transform: scale(0.9); opacity: 0.4; }
+    50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px var(--lux-accent); }
+    100% { transform: scale(0.9); opacity: 0.4; }
+}
+
+.server-status-indicator.online .dot {
+    background: #2E7D32 !important;
+    box-shadow: 0 0 10px rgba(46, 125, 50, 0.4) !important;
+    animation: none !important;
+}
+
+.server-status-indicator.online .status-text {
+    color: #2E7D32 !important;
+}

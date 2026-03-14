@@ -24,53 +24,83 @@ onAuthStateChanged(auth, (user) => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     if (request.action === 'signInWithGoogle') {
-        console.log('Background: Initiating Google Sign-In...');
-        // 1. Get OAuth token from Chrome Identity
-        chrome.identity.getAuthToken({ interactive: true }, async function (token) {
+        console.log('Background: Initiating Google Sign-In via WebAuthFlow...');
+        
+        const clientId = '547040678375-ab5hqpb9325hgrtltpre1spkra3j32mk.apps.googleusercontent.com';
+        const redirectUri = chrome.identity.getRedirectURL(); // https://<id>.chromiumapp.org/
+        const scopes = ['openid', 'email', 'profile'].join(' ');
+        
+        // Use prompt=select_account to force the account picker every time
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&prompt=select_account`;
+
+        chrome.identity.launchWebAuthFlow({
+            url: authUrl,
+            interactive: true
+        }, async (responseUrl) => {
             if (chrome.runtime.lastError) {
-                console.error("Identity Error:", chrome.runtime.lastError);
+                console.error("WebAuthFlow Error:", chrome.runtime.lastError);
                 sendResponse({ success: false, error: chrome.runtime.lastError.message });
                 return;
             }
 
-            console.log('Background: Got Chrome Identity token. Exchanging with Firebase...');
+            if (!responseUrl) {
+                console.error("WebAuthFlow: No response URL received");
+                sendResponse({ success: false, error: 'Authentication failed or was cancelled.' });
+                return;
+            }
+
+            console.log('Background: Received response URL, extracting token...');
             
             try {
-                // 2. Exchange token with Firebase using Google Auth Provider
-                const credential = GoogleAuthProvider.credential(null, token);
-                console.log('Background: Created Firebase Credential from Access Token');
-                
-                const userCredential = await signInWithCredential(auth, credential);
-                const idToken = await userCredential.user.getIdToken();
+                // Parse access_token from the URL fragment (#access_token=...)
+                const url = new URL(responseUrl);
+                const params = new URLSearchParams(url.hash.substring(1));
+                const token = params.get('access_token');
 
-                console.log("Firebase login successful for:", userCredential.user.email);
-                console.log("Firebase ID Token generated (first 20 chars):", idToken.substring(0, 20));
+                if (!token) {
+                    throw new Error('Access token not found in URL fragment');
+                }
+
+                console.log('Background: Token extracted. Exchanging with Firebase...');
+                const credential = GoogleAuthProvider.credential(null, token);
+                const userCredential = await signInWithCredential(auth, credential);
                 
+                console.log("Firebase login successful for:", userCredential.user.email);
                 sendResponse({ success: true, user: userCredential.user });
             } catch (err) {
-                console.error("Firebase Auth Exchange Error:", err);
-                sendResponse({ success: false, error: `Firebase Auth failed: ${err.message}` });
+                console.error("Auth Processing Error:", err);
+                sendResponse({ success: false, error: `Authentication failed: ${err.message}` });
             }
         });
-        return true; // Keep message channel open for async response
+        return true; // Keep message channel open
     }
     
     if (request.action === 'signOut') {
-        signOut(auth).then(() => {
-            // Clear all user-specific extension storage
-            chrome.storage.sync.clear(() => {
-                chrome.storage.session.clear(() => {
-                    // Also revoke the Chrome Identity token
-                    chrome.identity.getAuthToken({ interactive: false }, (token) => {
-                        if (token) {
-                            chrome.identity.removeCachedAuthToken({ token }, function() {
-                                sendResponse({ success: true });
-                            });
-                        } else {
-                            sendResponse({ success: true });
-                        }
+        // 1. Get the current token before signing out of Firebase
+        chrome.identity.getAuthToken({ interactive: false }, (token) => {
+            if (token) {
+                // 2. Revoke the token via Google's API
+                fetch(`https://accounts.google.com/o/oauth2/revoke?token=${token}`)
+                    .then(() => {
+                        console.log('Background: Token revoked successfully');
+                        // 3. Remove from Chrome's cache
+                        chrome.identity.removeCachedAuthToken({ token }, () => {
+                            console.log('Background: Cached token removed');
+                        });
+                    })
+                    .catch(err => console.error('Background: Token revocation failed:', err));
+            }
+
+            // 4. Sign out of Firebase and clear storage
+            signOut(auth).then(() => {
+                chrome.storage.sync.clear(() => {
+                    chrome.storage.session.clear(() => {
+                        sendResponse({ success: true });
                     });
                 });
+            }).catch(err => {
+                console.error("Firebase SignOut error:", err);
+                sendResponse({ success: false, error: err.message });
             });
         });
         return true;

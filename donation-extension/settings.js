@@ -1,27 +1,58 @@
 // Settings Page Script
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://roundup-donation.onrender.com/api';
 let currentSession = null;
+let isServerOnline = false;
 
 // Helper to get absolute logo URL
 function getLogoUrl(path) {
     if (!path) return 'icons/default-ngo.png';
     if (path.startsWith('http')) return path;
-    // Remove /api from the end of the base URL to get the root
     const root = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0, -4) : API_BASE_URL;
     const url = `${root}/${path}`;
-    console.log(`[DEBUG] Final Logo URL for ${path}: ${url}`);
     return url;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+// Helper to get auth token
+async function getAuthToken() {
+    return new Promise(resolve => {
+        chrome.runtime.sendMessage({ action: 'getAuthToken' }, obj => resolve(obj?.token));
+    });
+}
 
-    // Auth elements
+async function pingServer() {
+    console.log('[DEBUG] Pinging server for cold start...');
+    const serverStatusIndicator = document.getElementById('serverStatus');
+    const statusText = serverStatusIndicator?.querySelector('.status-text');
+    const healthUrl = API_BASE_URL.replace(/\/api\/?$/, '') + '/health';
+
+    try {
+        const response = await fetch(healthUrl);
+        if (response.ok) {
+            isServerOnline = true;
+            if (serverStatusIndicator) {
+                serverStatusIndicator.classList.add('online');
+                if (statusText) statusText.textContent = 'Server Online';
+                setTimeout(() => { serverStatusIndicator.style.opacity = '0.4'; }, 4000);
+            }
+            console.log('✓ Server is awake and responsive');
+            return true;
+        }
+    } catch (error) {
+        console.warn('! Server is likely booting...', error.message);
+    }
+    if (!isServerOnline) setTimeout(pingServer, 2000);
+    return false;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Start pinging immediately
+    pingServer();
+
+    // UI elements
     const authNotice = document.getElementById('authNotice');
     const appSettings = document.getElementById('appSettings');
     const userEmailDisplay = document.getElementById('userEmailDisplay');
-
-    // Form elements
     const locationModes = document.querySelectorAll('input[name="locationMode"]');
     const citySelectorGroup = document.getElementById('citySelectorGroup');
     const citySelect = document.getElementById('citySelect');
@@ -31,7 +62,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historyPreview = document.getElementById('historyPreview');
     const historyTable = document.getElementById('historyTable');
 
-    // Handle clicks on receipt buttons (Event Delegation)
     const handleReceiptClick = (e) => {
         const btn = e.target.closest('.download-receipt-btn');
         if (btn) {
@@ -40,13 +70,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    historyPreview.addEventListener('click', handleReceiptClick);
-    historyTable.addEventListener('click', handleReceiptClick);
+    if (historyPreview) historyPreview.addEventListener('click', handleReceiptClick);
+    if (historyTable) historyTable.addEventListener('click', handleReceiptClick);
 
-    // Initial load Flow
-    await checkAuthStatus();
-
-    // -- AUTH FLOW -- //
+    // -- AUTH CHECK -- //
     function checkAuthStatus() {
         chrome.runtime.sendMessage({ action: 'getSession' }, async (response) => {
             if (response && response.session) {
@@ -62,27 +89,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    window.getAuthToken = async function () {
-        return new Promise(resolve => {
-            chrome.runtime.sendMessage({ action: 'getAuthToken' }, obj => resolve(obj?.token));
-        });
-    };
+    await checkAuthStatus();
 
     // -- APP FLOW -- //
     async function initializeApp() {
+        if (!isServerOnline) {
+            console.log('[DEBUG] Waiting for server before initializing app...');
+            setTimeout(initializeApp, 1500);
+            return;
+        }
 
-        // Try to fetch profile from backend to sync settings
+        console.log('[DEBUG] Server is online, initializing profile & history...');
+
         try {
+            const token = await getAuthToken();
             const profileRes = await fetch(`${API_BASE_URL}/users/profile`, {
-                headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             if (profileRes.ok) {
                 const profile = await profileRes.json();
                 if (profile.selectedNGO) {
-                    // Sync backend NGO selection to local storage if it exists
-                    // We need to fetch the full NGO object from the list to store it correctly
                     const ngosRes = await fetch(`${API_BASE_URL}/ngos`, {
-                        headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+                        headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const ngos = await ngosRes.json();
                     const matchedNgo = ngos.find(n => n.id === profile.selectedNGO);
@@ -95,32 +123,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Failed to sync backend profile:', e);
         }
 
-        // Load saved settings from sync storage (now synchronized with backend)
-        chrome.storage.sync.get(['extensionEnabled', 'locationMode', 'selectedCity', 'selectedNGO'], async (result) => {
-
+        chrome.storage.sync.get(['locationMode', 'selectedCity'], async (result) => {
             const locationMode = result.locationMode || 'auto';
-            document.querySelector(`input[name="locationMode"][value="${locationMode}"]`).checked = true;
+            const radio = document.querySelector(`input[name="locationMode"][value="${locationMode}"]`);
+            if (radio) radio.checked = true;
 
             if (locationMode === 'select') {
                 citySelectorGroup.classList.remove('hidden');
-                if (result.selectedCity) {
-                    citySelect.value = result.selectedCity;
-                }
-            }
-
-            // Initialize based on mode
-            if (locationMode === 'auto') {
-                await autoDetectLocation();
-            } else {
+                if (result.selectedCity) citySelect.value = result.selectedCity;
                 await loadNGOs(citySelect.value);
+            } else {
+                await autoDetectLocation();
             }
         });
 
-        // Load donation history
         await loadDonationHistory();
     }
 
-    // Handle Location Mode changes
     locationModes.forEach(mode => {
         mode.addEventListener('change', async (e) => {
             if (e.target.value === 'select') {
@@ -133,14 +152,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // Handle City changes
     citySelect.addEventListener('change', async (e) => {
         await loadNGOs(e.target.value);
     });
 
     async function autoDetectLocation() {
         detectedCityName.textContent = 'Detecting...';
-        // Mock auto-detection (in reality would use a geo-IP service or Geolocation API)
         setTimeout(async () => {
             const city = 'Nashik';
             detectedCityName.textContent = city;
@@ -148,70 +165,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
     }
 
-
-    // NGO Modal elements
     const ngoModal = document.getElementById('ngoModal');
-    const ngoModalDetail = document.getElementById('ngoModalDetail');
-
-    // Close modal on outside click
     window.addEventListener('click', (e) => {
         if (e.target === ngoModal) ngoModal.classList.add('hidden');
-        if (e.target === document.getElementById('historyModal')) closeHistoryModal();
+        const historyModal = document.getElementById('historyModal');
+        if (e.target === historyModal) closeHistoryModal();
     });
 
-    // Save settings
     saveBtn.addEventListener('click', async () => {
-        const result = await chrome.storage.sync.get(['selectedNGO']);
-        const selectedNGO = result.selectedNGO;
-
+        const res = await chrome.storage.sync.get(['selectedNGO']);
+        const selectedNGO = res.selectedNGO;
         if (!selectedNGO) {
-            status.textContent = 'Please select an NGO from the list below';
+            status.textContent = 'Please select an NGO first';
             status.style.color = '#D4AF37';
             return;
         }
-
         const locationMode = document.querySelector('input[name="locationMode"]:checked').value;
-        const selectedCity = citySelect.value;
-
         try {
-            // Save to backend profile
-            const response = await fetch(`${API_BASE_URL}/users/profile`, {
+            const token = await getAuthToken();
+            await fetch(`${API_BASE_URL}/users/profile`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${await window.getAuthToken()}`
-                },
-                body: JSON.stringify({
-                    selectedNGO: selectedNGO.id
-                })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ selectedNGO: selectedNGO.id })
             });
-
-            if (!response.ok) throw new Error('Failed to update backend profile');
-
-            // Save to chrome storage
-            chrome.storage.sync.set({
-                locationMode: locationMode,
-                selectedCity: selectedCity,
-                // selectedNGO object is already in sync storage from selectNGO()
-            }, () => {
-                status.textContent = 'Settings saved successfully';
+            chrome.storage.sync.set({ locationMode, selectedCity: citySelect.value }, () => {
+                status.textContent = 'Settings saved';
                 status.style.color = '#1A1A1A';
-                setTimeout(() => {
-                    status.textContent = '';
-                }, 3000);
+                setTimeout(() => { status.textContent = ''; }, 3000);
             });
         } catch (error) {
-            console.error('Error saving settings:', error);
-            status.textContent = 'Failed to save settings to server';
+            status.textContent = 'Failed to save to server';
             status.style.color = '#D32F2F';
         }
     });
 
-    // History modal controls
     document.getElementById('viewHistory').addEventListener('click', openHistoryModal);
     document.getElementById('closeModal').addEventListener('click', closeHistoryModal);
     document.getElementById('exportHistory').addEventListener('click', exportHistoryCSV);
     document.getElementById('clearHistory').addEventListener('click', clearHistory);
+
+    async function clearHistory() {
+        if (!confirm('Clear all donation history?')) return;
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/clear`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${await getAuthToken()}` }
+            });
+            if (response.ok) { location.reload(); }
+        } catch (error) { alert('Error clearing history'); }
+    }
 });
 
 async function loadNGOs(location = '') {
@@ -372,24 +374,48 @@ function selectNGO(ngo) {
     });
 }
 
-async function loadDonationHistory() {
+async function loadDonationHistory(retryCount = 0) {
     const historyPreview = document.getElementById('historyPreview');
     if (!historyPreview) return;
+    
+    console.log(`[DEBUG] Attempting to load history preview (Attempt ${retryCount + 1})...`);
 
     try {
+        const token = await getAuthToken();
+        if (!token) {
+            console.warn('[DEBUG] No token found yet for history preview');
+            if (retryCount < 5) setTimeout(() => loadDonationHistory(retryCount + 1), 1500);
+            return;
+        }
+
         const response = await fetch(`${API_BASE_URL}/donations/history`, {
-            headers: { 'Authorization': `Bearer ${await window.getAuthToken()}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`);
+        }
+        
         const donations = await response.json();
 
+        if (!Array.isArray(donations)) {
+            console.error('Expected array for donations but got:', donations);
+            historyPreview.innerHTML = '<p class="error">Data format error from server</p>';
+            return;
+        }
+
         if (donations.length === 0) {
-            historyPreview.innerHTML = '<p>No donations yet. Start donating to build your history!</p>';
+            historyPreview.innerHTML = '<p style="opacity: 0.6; font-style: italic;">No donations yet. Start building your impact!</p>';
             return;
         }
 
         // Limit preview to 5
         const recentDonations = donations.slice(0, 5);
-        const totalDonated = donations.filter(d => d.status === 'completed' || d.status === 'paid').reduce((sum, d) => sum + d.donationAmount, 0);
+        const totalDonated = donations
+            .filter(d => d.status === 'completed' || d.status === 'paid')
+            .reduce((sum, d) => sum + (parseFloat(d.donationAmount) || 0), 0);
+
+        console.log(`[DEBUG] Successfully loaded ${donations.length} records into preview`);
 
         historyPreview.innerHTML = `
             <div class="history-summary">
@@ -438,8 +464,13 @@ async function loadDonationHistory() {
         `;
 
     } catch (error) {
-        console.error('Error loading history:', error);
-        historyPreview.innerHTML = '<p class="error">Failed to load history</p>';
+        console.error('Error loading history preview:', error);
+        if (retryCount < 3) {
+            console.log('[DEBUG] Retrying history load...');
+            setTimeout(() => loadDonationHistory(retryCount + 1), 2000);
+        } else {
+            historyPreview.innerHTML = `<p class="error" style="font-size: 11px; opacity: 0.7;">Unable to load recent history. Full history may still be available.</p>`;
+        }
     }
 }
 

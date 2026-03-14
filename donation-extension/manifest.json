@@ -17,6 +17,7 @@
     "https://www.flipkart.com/*",
     "https://www.myntra.com/*",
     "http://localhost:5000/*",
+    "https://roundup-donation.onrender.com/*",
     "https://api.donation-app.com/*",
     "https://*.razorpay.com/*",
     "https://rzp.io/*",
@@ -24,7 +25,7 @@
     "https://*.googleapis.com/*"
   ],
   "oauth2": {
-    "client_id": "",
+    "client_id": "547040678375-ab5hqpb9325hgrtltpre1spkra3j32mk.apps.googleusercontent.com",
     "scopes": [
       "openid",
       "email",

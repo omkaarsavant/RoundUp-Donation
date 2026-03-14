@@ -1,19 +1,70 @@
 // Popup Script - Handles donation UI and user interactions
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://roundup-donation.onrender.com/api';
 let currentSession = null;
 
 // Helper to get absolute logo URL
 function getLogoUrl(path) {
     if (!path) return 'icons/default-ngo.png';
     if (path.startsWith('http')) return path;
-    const root = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0, -4) : API_BASE_URL;
+const root = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0, -4) : API_BASE_URL;
     const url = `${root}/${path}`;
     console.log(`[DEBUG] Final Logo URL (Popup) for ${path}: ${url}`);
     return url;
 }
 
+// Global server status state
+let isServerOnline = false;
+
+async function pingServer() {
+    console.log('[DEBUG] Pinging server for cold start...');
+    const serverStatusIndicators = document.querySelectorAll('.server-status-indicator');
+    
+    // Health endpoint
+    const healthUrl = API_BASE_URL.replace(/\/api\/?$/, '') + '/health';
+
+    try {
+        const response = await fetch(healthUrl);
+        if (response.ok) {
+            isServerOnline = true;
+            serverStatusIndicators.forEach(indicator => {
+                indicator.classList.add('online');
+                const textElem = indicator.querySelector('.status-text');
+                if (textElem) textElem.textContent = 'Server Online';
+                
+                // Fade out after a moment
+                setTimeout(() => {
+                    indicator.style.opacity = '0.4';
+                }, 4000);
+            });
+
+            // Update accept button if it's currently in "connecting" state
+            const acceptBtn = document.getElementById('acceptBtn');
+            if (acceptBtn && acceptBtn.dataset.waitingForServer === 'true') {
+                acceptBtn.disabled = false;
+                acceptBtn.textContent = 'Donate & Pay';
+                acceptBtn.dataset.waitingForServer = 'false';
+                acceptBtn.classList.remove('btn-disabled');
+            }
+
+            console.log('✓ Server is awake and responsive');
+            return true;
+        }
+    } catch (error) {
+        console.warn('! Server is likely booting (cold start)...', error.message);
+    }
+    
+    // Retry if not online
+    if (!isServerOnline) {
+        setTimeout(pingServer, 2000);
+    }
+    return false;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+    
+    // Start pinging immediately
+    pingServer();
     
     // Auth UI elements
     const authContainer = document.getElementById('authContainer');
@@ -159,8 +210,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (signOutBtn) {
         signOutBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            localStorage.clear(); // Clear all popup-specific UI state
-            chrome.runtime.sendMessage({ action: 'signOut' }, () => {
+            signOutBtn.disabled = true;
+            signOutBtn.textContent = 'Signing out...';
+            localStorage.clear();
+            chrome.runtime.sendMessage({ action: 'signOut' }, (response) => {
+                signOutBtn.disabled = false;
+                signOutBtn.textContent = 'Sign Out';
                 currentSession = null;
                 showAuthUI();
             });
@@ -170,6 +225,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -- APP FLOW -- //
 
     function initializeAppLogic() {
+        console.log('[DEBUG] Initializing app logic (Detection Flow)');
+
         // Check if payment was already completed for this tab
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const tabId = tabs[0]?.id;
@@ -384,9 +441,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             ngoLogoEl.src = logoUrl;
             ngoLogoEl.style.filter = 'none';
             
-            acceptBtn.disabled = false;
-            acceptBtn.textContent = 'Donate & Pay';
-            acceptBtn.classList.remove('btn-disabled');
+            if (!isServerOnline) {
+                acceptBtn.disabled = true;
+                acceptBtn.textContent = 'Booting Server...';
+                acceptBtn.dataset.waitingForServer = 'true';
+                acceptBtn.classList.add('btn-disabled');
+            } else {
+                acceptBtn.disabled = false;
+                acceptBtn.textContent = 'Donate & Pay';
+                acceptBtn.dataset.waitingForServer = 'false';
+                acceptBtn.classList.remove('btn-disabled');
+            }
         } else {
             ngoNameEl.innerHTML = '<span style="color: var(--lux-accent);">NGO Not Selected</span>';
             ngoDescEl.textContent = 'Please set your preferred NGO in settings to enable rounding donations.';

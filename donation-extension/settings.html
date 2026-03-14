@@ -37,6 +37,10 @@
                 <span class="lux-label">Settings</span>
                 <h1 class="lux-h1">Donation <em>Preferences</em></h1>
                 <p class="lux-tagline" id="userEmailDisplay">Configure your contribution to meaningful causes.</p>
+                <div id="serverStatus" class="server-status-indicator">
+                    <span class="dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
             </header>
 
             <main class="lux-main">
@@ -88,7 +92,7 @@
                     </div>
                     <!-- Moved save settings button to bottom layout -->
                     <div id="historyPreview" class="lux-history-preview">
-                        <p>Retrieving your donation history...</p>
+                        <p style="opacity: 0.6; font-family: var(--lux-font-body);">Syncing your impact history...</p>
                     </div>
                 </section>
 

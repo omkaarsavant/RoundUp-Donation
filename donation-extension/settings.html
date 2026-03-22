@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round-Up Donations Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/design-tokens.css">
+    <link rel="stylesheet" href="styles/settings.css">
+</head>
+
+<body>
+    <!-- Luxury structural elements -->
+    <div class="paper-noise"></div>
+    <div class="lux-grid-line lux-grid-line-1"></div>
+    <div class="lux-grid-line lux-grid-line-2"></div>
+    <div class="lux-grid-line lux-grid-line-3"></div>
+    <div class="lux-grid-line lux-grid-line-4"></div>
+
+    <div class="container lux-container">
+
+        <div id="authNotice" class="hidden" style="text-align: center; padding: 6rem 0;">
+            <h1 class="lux-h1">Sign In <em>Required</em></h1>
+            <p class="lux-tagline" style="margin-bottom: 2rem;">Please open the extension popup to log in with Google.
+            </p>
+            <p style="color: var(--color-surface-400);">Once signed in, your preferences will sync automatically.</p>
+        </div>
+
+        <div id="appSettings" class="hidden">
+            <header class="lux-header">
+                <img src="icons/logo.png" alt="Logo" style="width: 40px; height: 40px; margin-bottom: 1.5rem; display: block; filter: brightness(0) invert(0);">
+                <span class="lux-label">Settings</span>
+                <h1 class="lux-h1">Donation <em>Preferences</em></h1>
+                <p class="lux-tagline" id="userEmailDisplay">Configure your contribution to meaningful causes.</p>
+                <div id="serverStatus" class="server-status-indicator">
+                    <span class="dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+            </header>
+
+            <main class="lux-main">
+
+                <!-- Donation Location -->
+                <section class="lux-section">
+                    <h2 class="lux-h2">Donation Location</h2>
+                    <p class="lux-description">Select your city for your local ngos.</p>
+                    <div class="location-selection">
+                        <div class="radio-group-horizontal lux-radio-group">
+                            <label class="radio lux-radio">
+                                <input type="radio" name="locationMode" value="auto" checked>
+                                <span class="radio-label">Auto Detect</span>
+                            </label>
+                            <label class="radio lux-radio">
+                                <input type="radio" name="locationMode" value="select">
+                                <span class="radio-label">Select City</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="citySelectorGroup" class="city-selector-group hidden">
+                        <select id="citySelect" class="lux-select">
+                            <option value="Nashik">Nashik</option>
+                            <option value="Pune">Pune</option>
+                            <option value="Mumbai">Mumbai</option>
+                        </select>
+                    </div>
+
+                    <div id="detectedCityInfo" class="lux-metadata">
+                        Detected City: <span id="detectedCityName">Searching...</span>
+                    </div>
+
+                    <div id="ngoList" class="lux-ngo-list">
+                        <div class="loading">Inquiring available causes...</div>
+                    </div>
+                </section>
+
+                <!-- Transaction History -->
+                <section class="lux-section">
+                    <h2 class="lux-h2">Donation <em>History</em></h2>
+                    <div class="history-controls lux-btn-group" style="align-items: center;">
+                        <button id="viewHistory" class="lux-btn lux-btn-secondary">View Full History</button>
+                        <button id="exportHistory" class="lux-btn lux-btn-secondary">Export Data</button>
+                        <button id="clearHistory" class="lux-btn lux-btn-secondary"
+                            style="color:#D32F2F; border-color:#D32F2F;">Clear History</button>
+                        <button id="saveBtn" class="lux-btn lux-btn-primary" style="margin-left: auto;">Save Settings</button>
+                        <span id="status" class="lux-status-message" style="margin-left: 1rem; font-size: 11px;"></span>
+                    </div>
+                    <!-- Moved save settings button to bottom layout -->
+                    <div id="historyPreview" class="lux-history-preview">
+                        <p style="opacity: 0.6; font-family: var(--lux-font-body);">Syncing your impact history...</p>
+                    </div>
+                </section>
+
+
+            </main>
+        </div>
+
+        <!-- Modal for History -->
+        <div id="historyModal" class="lux-modal hidden">
+            <div class="lux-modal-content">
+                <button class="lux-modal-close" id="closeModal">Close</button>
+                <h2 class="lux-h2">Full <em>History</em></h2>
+                <div id="historyTable" class="lux-table-container"></div>
+            </div>
+        </div>
+
+        <!-- Modal for NGO Detail -->
+        <div id="ngoModal" class="lux-modal hidden">
+            <div class="lux-modal-content lux-ngo-modal-content">
+                <div id="ngoModalDetail">
+                    <!-- Dynamic content will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="libs/jspdf.umd.min.js"></script>
+    <script src="settings.js"></script>
+</body>
+
+</html>

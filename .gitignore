@@ -1,0 +1,21 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.env
+
+# Firebase
+serviceAccountKey.json
+
+# Chrome Extension Config
+donation-extension/config.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Production build artifacts
+dist/
+build/

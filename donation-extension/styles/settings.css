@@ -1,0 +1,772 @@
+/* ============================================================
+   Luxury / Editorial — Settings Page
+   ============================================================ */
+
+/* ---- Reset ---- */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ---- Hidden utility ---- */
+.hidden { display: none !important; }
+
+/* ---- Container ---- */
+.lux-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 var(--lux-padding-desktop);
+}
+
+/* ---- Header ---- */
+.lux-header {
+    padding: 6rem 0 4rem;
+    border-bottom: 1px solid rgba(26,26,26,0.12);
+}
+
+.lux-label {
+    display: block;
+    font-family: var(--lux-font-body);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: var(--lux-tracking-label);
+    color: var(--lux-muted-fg);
+    margin-bottom: 1.25rem;
+}
+
+.lux-h1 {
+    font-family: var(--lux-font-heading);
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-weight: 400;
+    line-height: var(--lux-leading-headline);
+    color: var(--lux-fg);
+    margin-bottom: 1rem;
+}
+
+.lux-h1 em {
+    font-style: italic;
+    color: var(--lux-accent);
+}
+
+.lux-tagline {
+    font-family: var(--lux-font-body);
+    font-size: 1rem;
+    color: var(--lux-muted-fg);
+    max-width: 28rem;
+    line-height: var(--lux-leading-body);
+}
+
+/* ---- Sections ---- */
+.lux-section {
+    padding: 4rem 0;
+    border-bottom: 1px solid rgba(26,26,26,0.08);
+}
+
+.lux-section:last-of-type { border-bottom: none; }
+
+.lux-h2 {
+    font-family: var(--lux-font-heading);
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 400;
+    color: var(--lux-fg);
+    margin-bottom: 0.75rem;
+}
+
+.lux-h2 em { font-style: italic; }
+
+.lux-description {
+    font-size: 0.9375rem;
+    color: var(--lux-muted-fg);
+    margin-bottom: 2.5rem;
+    max-width: 30rem;
+    line-height: var(--lux-leading-body);
+}
+
+/* ---- Radio Controls ---- */
+.lux-radio-group {
+    display: flex;
+    gap: 2.5rem;
+    margin-bottom: 2rem;
+}
+
+.lux-radio {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    transition: color var(--lux-duration-normal) var(--lux-easing-luxury);
+}
+
+.lux-radio:hover { background: transparent; }
+.lux-radio:hover .radio-label { color: var(--lux-accent); }
+
+.lux-radio input[type="radio"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--lux-fg);
+    border-radius: 0;
+    margin: 0;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.lux-radio input[type="radio"]:checked {
+    border-color: var(--lux-accent);
+}
+
+.lux-radio input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px; right: 2px; bottom: 2px;
+    background: var(--lux-accent);
+}
+
+.radio-label {
+    font-family: var(--lux-font-body);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--lux-fg);
+    transition: color var(--lux-duration-normal) var(--lux-easing-luxury);
+}
+
+/* ---- Select ---- */
+.lux-select {
+    width: 100%;
+    max-width: 20rem;
+    padding: 0.875rem 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(26,26,26,0.2);
+    font-family: var(--lux-font-body);
+    font-size: 0.9375rem;
+    color: var(--lux-fg);
+    border-radius: 0;
+    outline: none;
+    cursor: pointer;
+    transition: border-color var(--lux-duration-normal) var(--lux-easing-luxury);
+}
+
+.lux-select:focus { border-bottom-color: var(--lux-accent); }
+
+/* ---- Metadata ---- */
+.lux-metadata {
+    font-family: var(--lux-font-body);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--lux-muted-fg);
+    margin-top: 1.5rem;
+}
+
+.lux-metadata span {
+    color: var(--lux-fg);
+    font-weight: 600;
+}
+
+/* ---- NGO Cards ---- */
+.lux-ngo-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 2rem;
+}
+
+.lux-ngo-list .loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    font-family: var(--lux-font-heading);
+    font-style: italic;
+    color: var(--lux-muted-fg);
+    font-size: 1.125rem;
+}
+
+.ngo-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    border: none;
+    border-top: 1px solid rgba(26,26,26,0.08);
+    border-radius: 0;
+    cursor: pointer;
+    background: transparent;
+    transition: all var(--lux-duration-normal) var(--lux-easing-luxury);
+}
+
+.ngo-card:hover {
+    background: rgba(46, 125, 50, 0.02);
+    border-top-color: var(--lux-success);
+}
+
+.ngo-card-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    flex: 1;
+}
+
+.ngo-card input[type="radio"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--lux-fg);
+    border-radius: 0;
+    margin: 0;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.ngo-card input[type="radio"]:checked {
+    border-color: var(--lux-accent);
+}
+
+.ngo-card input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px; right: 2px; bottom: 2px;
+    background: var(--lux-accent);
+}
+
+.ngo-card-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.ngo-card-logo {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 0;
+    filter: grayscale(100%);
+    transition: filter var(--lux-duration-cinematic) var(--lux-easing-luxury);
+    box-shadow: var(--lux-shadow-inset);
+}
+
+.ngo-card:hover .ngo-card-logo {
+    filter: grayscale(0%);
+}
+
+.ngo-info { flex: 1; }
+
+.ngo-info h3 {
+    font-family: var(--lux-font-heading);
+    font-size: 1.125rem;
+    font-weight: 400;
+    color: var(--lux-fg);
+    margin-bottom: 0.25rem;
+}
+
+.ngo-info p {
+    font-size: 0.8125rem;
+    color: var(--lux-muted-fg);
+    line-height: 1.5;
+}
+
+.ngo-upi {
+    font-family: 'Courier New', monospace;
+    font-size: 0.6875rem;
+    color: var(--lux-muted-fg);
+}
+
+.ngo-card-badge { display: none; }
+
+/* Selected NGO */
+.ngo-card.selected {
+    border: 2px solid var(--lux-success);
+    background: transparent;
+}
+
+.ngo-card.selected::after {
+    content: 'SELECTED';
+    position: absolute;
+    top: 0.5rem;
+    right: 1.5rem;
+    font-family: var(--lux-font-body);
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--lux-success);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+/* ---- Buttons ---- */
+.lux-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.75rem;
+    padding: 0 1.75rem;
+    border: none;
+    border-radius: 0;
+    font-family: var(--lux-font-body);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: var(--lux-tracking-btn);
+    cursor: pointer;
+    overflow: hidden;
+    transition: all var(--lux-duration-normal) var(--lux-easing-luxury);
+}
+
+.lux-btn-primary {
+    background: var(--lux-fg);
+    color: var(--lux-bg);
+    box-shadow: var(--lux-shadow-btn);
+}
+
+.lux-btn-primary:hover { 
+    box-shadow: var(--lux-shadow-btn-hover);
+    background: var(--lux-accent);
+}
+
+.lux-btn-secondary {
+    background: transparent;
+    border: 1px solid var(--lux-fg);
+    color: var(--lux-fg);
+}
+
+.lux-btn-secondary:hover {
+    background: var(--lux-fg);
+    color: var(--lux-bg);
+}
+
+.lux-btn-ghost {
+    background: transparent;
+    color: var(--lux-muted-fg);
+    border: none;
+}
+
+.lux-btn-ghost:hover { color: var(--lux-fg); }
+
+/* Legacy .btn & .btn-icon & .lux-btn-icon — keep for JS-generated markup */
+.btn-icon, .lux-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    min-width: 5rem;
+    padding: 0 1rem;
+    font-family: var(--lux-font-body);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--lux-bg);
+    background: var(--lux-fg);
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all var(--lux-duration-normal) var(--lux-easing-luxury);
+    box-shadow: var(--lux-shadow-sm);
+}
+
+.btn-icon:hover, .lux-btn-icon:hover {
+    background: var(--lux-accent);
+    color: var(--lux-bg);
+    border: none;
+}
+
+/* ---- Button Group ---- */
+.lux-btn-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+
+/* ---- History Preview ---- */
+.lux-history-preview {
+    padding: 2.5rem;
+    background: var(--lux-muted-bg);
+    border-radius: 0;
+}
+
+.lux-history-preview p {
+    font-family: var(--lux-font-heading);
+    font-style: italic;
+    color: var(--lux-muted-fg);
+}
+
+/* Summary tiles */
+.history-summary {
+    display: flex;
+    gap: 3rem;
+    margin-bottom: 3rem;
+}
+
+.summary-item {
+    border-left: 1px solid var(--lux-accent);
+    padding-left: 1.25rem;
+    background: transparent;
+    border-radius: 0;
+}
+
+.summary-item .label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--lux-muted-fg);
+    margin-bottom: 0.5rem;
+}
+
+.summary-item .value {
+    display: block;
+    font-family: var(--lux-font-heading);
+    font-size: 1.75rem;
+    font-weight: 400;
+    color: var(--lux-fg);
+}
+
+/* Table */
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.history-table thead { background: transparent; }
+
+.history-table th {
+    text-align: left;
+    font-family: var(--lux-font-body);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--lux-muted-fg);
+    padding: 0 0 1rem;
+    border-bottom: 1px solid var(--lux-fg);
+}
+
+.history-table td {
+    padding: 1.25rem 0.5rem 1.25rem 0;
+    border-bottom: 1px solid rgba(26,26,26,0.06);
+    font-size: 0.8125rem;
+    color: var(--lux-fg);
+}
+
+.history-table tr:hover { background: rgba(26,26,26,0.015); }
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0;
+    font-family: var(--lux-font-body);
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}
+
+.badge.pending { background: var(--lux-muted-bg); color: var(--lux-muted-fg); }
+.badge.completed { background: var(--lux-fg); color: var(--lux-bg); }
+.badge.failed { background: transparent; color: var(--lux-muted-fg); border: 1px solid rgba(26,26,26,0.15); }
+
+.status-text {
+    font-family: var(--lux-font-body);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--lux-fg);
+}
+
+/* ---- Actions ---- */
+.lux-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 3rem 0 6rem;
+}
+
+.lux-status-message {
+    font-family: var(--lux-font-body);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--lux-muted-fg);
+    min-height: 1.25rem;
+}
+
+/* ---- Modals ---- */
+.lux-modal {
+    display: flex;
+    position: fixed;
+    z-index: 2000;
+    inset: 0;
+    background: rgba(249,248,246,0.97);
+    align-items: center;
+    justify-content: center;
+}
+
+.lux-modal.hidden { display: none; }
+
+.lux-modal-content {
+    position: relative;
+    background: var(--lux-bg);
+    border-top: 1px solid var(--lux-fg);
+    padding: 4rem 3rem;
+    max-width: 900px;
+    max-height: 85vh;
+    overflow-y: auto;
+    width: 85%;
+}
+
+.lux-modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    font-family: var(--lux-font-body);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    background: transparent;
+    border: 1px solid rgba(26,26,26,0.15);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: var(--lux-fg);
+    transition: all var(--lux-duration-normal) var(--lux-easing-luxury);
+}
+
+.lux-modal-close:hover {
+    background: var(--lux-fg);
+    color: var(--lux-bg);
+    border-color: var(--lux-fg);
+}
+
+.lux-modal-content .lux-h2 { margin-bottom: 2rem; }
+
+.lux-table-container { margin-top: 1rem; }
+
+/* ---- NGO Detail Modal ---- */
+.lux-ngo-modal-content {
+    max-width: 400px;
+    padding: 0;
+    overflow: visible;
+    border-top: 2px solid var(--lux-accent);
+}
+
+.ngo-detail-header {
+    background: var(--lux-fg);
+    color: var(--lux-bg);
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.ngo-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.ngo-header-titles {
+    text-align: left;
+}
+
+.ngo-detail-logo {
+    display: block;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
+    border-radius: 0;
+    border: 2px solid rgba(249,248,246,0.3);
+    object-fit: cover;
+    overflow: hidden;
+    margin-bottom: 0;
+    filter: grayscale(100%);
+    transition: filter var(--lux-duration-cinematic) var(--lux-easing-luxury);
+}
+
+.ngo-detail-header:hover .ngo-detail-logo { filter: grayscale(0); }
+
+.ngo-detail-header h2 {
+    font-family: var(--lux-font-heading);
+    font-weight: 400;
+    color: var(--lux-bg);
+    margin-bottom: 0.125rem;
+    font-size: 1.25rem;
+}
+
+.ngo-detail-header p {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin: 0;
+    color: var(--lux-bg);
+}
+
+/* Ensure buttons in dark header are always visible */
+.ngo-header-right .lux-btn-primary {
+    background: var(--lux-accent);
+    color: var(--lux-accent-fg);
+    border: none;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.ngo-header-right .lux-btn-primary:hover {
+    background: var(--lux-bg);
+    color: var(--lux-fg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.ngo-header-right .lux-btn-secondary {
+    background: transparent;
+    border: 1px solid rgba(249, 248, 246, 0.4);
+    color: var(--lux-bg);
+}
+
+.ngo-header-right .lux-btn-secondary:hover {
+    background: var(--lux-bg);
+    color: var(--lux-fg);
+    border-color: var(--lux-bg);
+}
+
+.ngo-detail-body { padding: 2rem; }
+
+.ngo-detail-section { margin-bottom: 2rem; }
+
+.ngo-detail-section h4 {
+    font-family: var(--lux-font-body);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--lux-muted-fg);
+    margin-bottom: 0.75rem;
+}
+
+.ngo-detail-section p {
+    font-size: 0.9375rem;
+    line-height: var(--lux-leading-body);
+    color: var(--lux-fg);
+}
+
+.ngo-contact-info {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--lux-muted-bg);
+    border-radius: 0;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--lux-fg);
+}
+
+.contact-icon {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--lux-muted-fg);
+    min-width: 1.5rem;
+}
+
+/* NGO selection button is now in the header */
+
+/* ---- Error state ---- */
+.error {
+    padding: 1.5rem;
+    background: transparent;
+    border: 1px solid rgba(26,26,26,0.12);
+    border-radius: 0;
+    font-size: 0.8125rem;
+    color: var(--lux-muted-fg);
+    grid-column: 1 / -1;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+    .lux-container { padding: 0 var(--lux-padding-mobile); }
+    .lux-header { padding: 3rem 0 2.5rem; }
+    .lux-section { padding: 2.5rem 0; }
+    .lux-ngo-list { grid-template-columns: 1fr; }
+    .history-summary { flex-direction: column; gap: 1.5rem; }
+    .lux-btn-group { flex-direction: column; }
+    .lux-btn-group .lux-btn { width: 100%; }
+    .lux-modal-content { width: 95%; padding: 2.5rem 1.5rem; }
+    .lux-actions { flex-direction: column; align-items: flex-start; }
+}
+
+/* ============================================================
+   SERVER STATUS INDICATOR
+   ============================================================ */
+.server-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: 1.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(26, 26, 26, 0.03);
+    border: 1px solid rgba(26, 26, 26, 0.05);
+    border-radius: 0;
+    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.server-status-indicator.online {
+    background: rgba(46, 125, 50, 0.05);
+    border-color: rgba(46, 125, 50, 0.1);
+}
+
+.server-status-indicator.online .dot {
+    background: #2E7D32;
+    box-shadow: 0 0 10px rgba(46, 125, 50, 0.4);
+    animation: none;
+}
+
+.server-status-indicator .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--lux-accent);
+    animation: lux-pulse 2s infinite cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.server-status-indicator .status-text {
+    font-family: var(--lux-font-body);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--lux-muted-fg);
+    font-weight: 500;
+}
+
+@keyframes lux-pulse {
+    0% { transform: scale(0.9); opacity: 0.4; }
+    50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px var(--lux-accent); }
+    100% { transform: scale(0.9); opacity: 0.4; }
+}
+
+.server-status-indicator.online .dot {
+    background: #2E7D32 !important;
+    box-shadow: 0 0 10px rgba(46, 125, 50, 0.4) !important;
+    animation: none !important;
+}
+
+.server-status-indicator.online .status-text {
+    color: #2E7D32 !important;
+}
